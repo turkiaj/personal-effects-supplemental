@@ -96,7 +96,7 @@ transformed parameters {
     b[j] = Lambda * z[j];    
     
   // - log transform alpha parameter to keep it positive
-  g_alpha = g_log_alpha;
+  g_alpha = exp(g_log_alpha);
 
   // estimate of variance 
   // (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4024993/)

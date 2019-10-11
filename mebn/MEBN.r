@@ -802,7 +802,7 @@ mebn.sampling <- function(inputdata, targetdata, predictor_columns, target_colum
   {
     stanDat <- mebn.set_model_parameters(predictor_columns, target_column, group_column, inputdata, targetdata, normalize_values, reg_params)
 
-    localfit <- stan(file=stan_mode_file, data=stanDat, warmup = 1000, iter=2000, chains=4, init=0, control = list(adapt_delta = 0.80, max_treedepth = 12))
+    localfit <- stan(file=stan_mode_file, data=stanDat, warmup = 1000, iter=2000, chains=4, init=0, control = list(adapt_delta = 0.95, max_treedepth = 12))
     
     modelcache <- paste0(local_model_cache, "/", target_name, "_blmm", ".rds")
     
