@@ -1,0 +1,87 @@
+---
+title: "Model cross-validation"
+output: html_notebook
+---
+
+This is notebook runs model cross-validation. It takes substantial amount of time and so this model generation is separated to this own notebook. The results and stored and analyzed in the main notebook.
+
+For Sysdimet dataset we compute a separate model for every 106 patients where measurements of one patient is left out from the model estimation. Input data of this left out patient is used to predict the patient's response and it is compared to actual blood test values.
+
+```{r setup, include=FALSE}
+library(knitr)
+library(kableExtra) # for good looking tables
+
+knitr::opts_chunk$set(echo = TRUE, fig.align="center")
+
+# this allows using tikz rendering for plots with "dev=tikz"
+knit_hooks$set(plot = function(x, options) {
+  if ('tikz' %in% options$dev && !options$external) {
+    hook_plot_tex(x, options)
+  } else hook_plot_md(x, options)
+})
+
+# Fix seed for random number generator for getting consistent results in kmeans etc.
+fixed_seed <- 678
+
+# Load common MEBN package
+source("mebn/MEBN.r")
+```
+
+```{r data_loading, echo=FALSE, message=FALSE}
+
+# Read the data description
+datadesc <- read.csv(file="data/SYSDIMET_data_description.csv", header = TRUE, sep = ";")
+
+# Read the actual data matching the description
+sysdimet <- read.csv(file="data/SYSDIMET_diet.csv", sep=";", dec=",")
+
+# Define how to iterate through the graph
+assumedpredictors <- datadesc[datadesc$Order==100,]    
+assumedtargets <- datadesc[datadesc$Order==200,] 
+```
+
+The final model candidate with hierarchical Gamma-regression, Regularized Horseshoe-shrinkage and AR(1) autocorrelation process is used in this cross validation.
+
+```{r shrinkage_parameters, echo=TRUE, message=FALSE}
+shrinkage_parameters <- within(list(),
+{
+    scale_icept  <- 1         # prior std for the intercept
+    scale_global <- 0.02428   # scale for the half-t prior for tau: 
+                              # ((p0=11) / (D=22-11)) * (sigma = 1 / sqrt(n=106*4))
+    nu_global    <- 1         # degrees of freedom for the half-t priors for tau
+    nu_local     <- 1         # degrees of freedom for the half-t priors for lambdas
+    slab_scale   <- 1         # slab scale for the regularized horseshoe
+    slab_df      <- 1         # slab degrees of freedom for the regularized horseshoe           
+})
+```
+
+Here we evaluate a separate model for each k (106) persons at the data while holding out all (4) measurements of one person at the time
+
+```{r nfold_holdout, echo=FALSE, eval=FALSE, message=FALSE}
+for (holdout_subject in levels(sysdimet$SUBJECT_ID))
+{
+  cvdir <- paste0("/media/jari/Jarin WD Passport/cvmodels/", holdout_subject)
+  dir.create(cvdir)
+
+  holdout_index <- as.vector(as.numeric(sysdimet$SUBJECT_ID == holdout_subject))
+
+  initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+  
+  sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                   inputdata = sysdimet,
+                                   targetdata = holdout_index,
+                                   predictor_columns = assumedpredictors, 
+                                   assumed_targets = assumedtargets, 
+                                   group_column = "SUBJECT_ID",
+                                   local_estimation = mebn.sampling,
+                                   local_model_cache = cvdir, 
+                                   stan_model_file = "mebn/BLMM_gamma_rhs_cv_ppc.stan",
+                                   reg_params = shrinkage_parameters,
+                                   normalize_values = TRUE)
+
+  write.graph(sysdimet_gamma_ar1_rhs_cv, paste0(cvdir, "/subject_", holdout_number, ".graphml", "graphml")
+}
+```
+
+
+
