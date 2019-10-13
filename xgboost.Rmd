@@ -42,14 +42,16 @@ For XGBoost, we prepare a dataset that contains all the predictors from past per
 ```{r}
 
 # Predictors for FSHDL
-
 fshdl_input <- sysdimet
-fshdl_input$prev_fshdl <- 0
+
+# - we assume that previous measurement from week 0 was same as week 0
+fshdl_input$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
+
 fshdl_input[fshdl_input$WEEK == 4,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
 fshdl_input[fshdl_input$WEEK == 8,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 4,]$fshdl
 fshdl_input[fshdl_input$WEEK == 12,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 8,]$fshdl
 
-# - use only weeks 4-12
+# try removing week 0 from training
 fshdl_input <- fshdl_input[fshdl_input$WEEK >= 4,]
 
 fshdl_input <- fshdl_input[c(as.vector(assumedpredictors$Name), "prev_fshdl")]
@@ -61,97 +63,118 @@ fshdl_input <- fshdl_input[c(as.vector(assumedpredictors$Name), "prev_fshdl")]
 fshdl_target <- sysdimet
 fshdl_target$label <- 0
 
+# - change of previous measurements
 fshdl_target[fshdl_target$WEEK == 12,]$label <- fshdl_target[fshdl_target$WEEK == 12,]$fshdl - fshdl_target[fshdl_target$WEEK == 8,]$fshdl
 fshdl_target[fshdl_target$WEEK == 8,]$label <- fshdl_target[fshdl_target$WEEK == 8,]$fshdl - fshdl_target[fshdl_target$WEEK == 4,]$fshdl
 fshdl_target[fshdl_target$WEEK == 4,]$label <- fshdl_target[fshdl_target$WEEK == 4,]$fshdl - fshdl_target[fshdl_target$WEEK == 0,]$fshdl
 
+# - we only the sign of change as label for learning
+fshdl_target$label <- sign(fshdl_target$label)
+
+fshdl_target <- fshdl_target[c("WEEK", "label")]
 fshdl_target <- fshdl_target[fshdl_target$WEEK >= 4,]
-fshdl_target <- sign(fshdl_target[c("label")])
-fshdl_target
 
+# fix -1 sign to 0 label
+fshdl_target[fshdl_target$label == -1,] <- 0
 ```
-
-
-
-
-## XGBoost
-
-https://cran.r-project.org/web/packages/xgboost/vignettes/xgboostPresentation.html
 
 
 ```{r}
 library(xgboost)
-library(readr)
-library(stringr)
-library(caret)
+
+n = nrow(fshdl_input)
+train.index = sample(n,floor(0.80*n))
+train.data = as.matrix(fshdl_input[train.index,])
+train.label = as.matrix(fshdl_target[train.index,]$label)
+test.data = as.matrix(fshdl_input[-train.index,])
+test.label = as.matrix(fshdl_target[-train.index,]$label)
+
+# Transform the two data sets into xgb.Matrix
+xgb.train = xgb.DMatrix(data=train.data,label=train.label)
+xgb.test = xgb.DMatrix(data=test.data,label=test.label)
 ```
-
-
-```{r load_data}
-data(agaricus.train, package='xgboost')
-data(agaricus.test, package='xgboost')
-train <- agaricus.train
-test <- agaricus.test
-```
-
-```{r basic_training}
-bstSparse <- xgboost(data = train$data, label = train$label, max_depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
-```
-
 
 ```{r}
-xgb <- xgboost(data = data.matrix(X[,-1]), 
- label = y, 
- eta = 0.1,
- max_depth = 15, 
- nround=25, 
- subsample = 0.5,
- colsample_bytree = 0.5,
- seed = 1,
- eval_metric = "merror",
- objective = "multi:softprob",
- num_class = 12,
- nthread = 3
+num_class = 2
+params = list(
+  booster="gbtree",
+  eta=0.001,
+  max_depth=5,
+  gamma=3,
+  subsample=0.75,
+  colsample_bytree=1,
+  objective="multi:softprob",
+  eval_metric="mlogloss",
+  num_class=num_class
 )
+
+xgb.fit=xgb.train(
+  params=params,
+  data=xgb.train,
+  nrounds=10000,
+  nthreads=1,
+  early_stopping_rounds=10,
+  watchlist=list(val1=xgb.train,val2=xgb.test),
+  verbose=0
+)
+
+# TODO: importance matrix of predictors. do they match MEBN?
+
 ```
 
 ```{r}
-dtrain <- xgb.DMatrix(data = train$data, label = train$label)
-bst <- xgboost(data = dtrain, max_depth = 2, eta = 1, nthread = 2, nrounds = 25, objective = "binary:logistic", verbose = 2)
+
+#eval.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+eval.mat <- matrix(0, nrow=1,ncol=3)
+
+i <- 1 
+for (w in c(4,8,12))
+{
+  # Prediction accuracy for different weeks 
+  week.index <- sysdimet$WEEK == w
+  
+  test.data = as.matrix(fshdl_input[week.index,])
+  test.label = as.matrix(fshdl_target[week.index,]$label)
+  xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+  
+  xgb.pred = predict(xgb.fit,test.data,reshape=T)
+  xgb.pred = as.data.frame(xgb.pred)
+  colnames(xgb.pred) = c(0,1)
+  
+  # Use the predicted label with the highest probability
+  xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
+  xgb.pred$label = test.label
+
+  # Calculate the final accuracy
+  result = sum(as.integer(xgb.pred$prediction==xgb.pred$label))/nrow(xgb.pred)
+
+  eval.mat[1,i] <- sprintf("%1.0f", 100*result)
+  i <- i + 1
+}
+
+eval.mat
+```
+```{r}
+# Review the final model and results
+#xgb.fit
+
+# Predict outcomes with the test data
+xgb.pred = predict(xgb.fit,test.data,reshape=T)
+xgb.pred = as.data.frame(xgb.pred)
+colnames(xgb.pred) = c(0,1)
+
+# Use the predicted label with the highest probability
+xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
+xgb.pred$label = test.label
+
+# Calculate the final accuracy
+result = sum(xgb.pred$prediction==xgb.pred$label)/nrow(xgb.pred)
+print(paste("Final Accuracy =",sprintf("%1.2f%%", 100*result)))
 ```
 
-
 ```{r}
-pred <- predict(bst, test$data)
-head(pred)
-```
-```{r}
-prediction <- as.numeric(pred > 0.5)
-print(head(prediction))
-```
-
-```{r}
-label = getinfo(dtest, "label")
-pred <- predict(bst, dtest)
-err <- as.numeric(sum(as.integer(pred > 0.5) != label))/length(label)
-print(paste("test-error=", err))
-```
-
-```{r}
-importance_matrix <- xgb.importance(model = bst)
+importance_matrix <- xgb.importance(model = xgb.fit)
 print(importance_matrix)
 xgb.plot.importance(importance_matrix = importance_matrix)
 
 ```
-
-```{r}
-# Compute feature importance matrix
-importance_matrix <- xgb.importance(names, model = xgb)
-# Nice graph
-xgb.plot.importance(importance_matrix[1:10,])
-```
-
-```{r}
-barplot(importance_matrix[,1])
-```
-

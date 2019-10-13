@@ -1,4 +1,44 @@
 
+# Accuracy evaluation for different model candidates
+
+mebn_rep_accuracy <- function(model_name, model_dir, amount_of_subjects, assumedtargets) {
+  
+  eval.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+  
+  allrep <- get_rep_response_for_all(model_dir)
+  
+  number_of_preds <- 0
+  
+  for (subject_number in 1:amount_of_subjects)
+  {
+    number_of_preds <- number_of_preds + 1
+    
+    # result contains all (4) personal responses in order by week
+    rep_response <- get_rep_response(allrep, subject_number)
+    true_response <- get_true_response(subject_number)
+    
+    # delta contains differences of successive responses
+    rep_delta <- make_delta(rep_response)
+    true_delta <- make_delta(true_response)
+    
+    # we only evaluate now if the predicted sign of the change matches true sign of the change
+    sign_matrix <- sign(rep_delta) == sign(true_delta)
+    
+    # average accuracy of all matches in all weeks
+    avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
+    eval.mat <- eval.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+  }
+  
+  eval.mat <- eval.mat/number_of_preds * 100
+  eval.mat <- cbind(eval.mat, rowMeans(eval.mat[,1:3]))
+  eval.mat <- round(eval.mat,0)
+  eval.mat <- cbind(c(model_name), eval.mat)
+  
+  return(eval.mat)
+}
+
+
+
 # Helper fuctions for model evaluation
 library(dplyr)
 library(tidyr)
@@ -80,3 +120,5 @@ make_delta <- function(true_response)
   
   return(true_delta)
 }
+
+

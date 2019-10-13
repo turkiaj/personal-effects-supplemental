@@ -198,8 +198,8 @@ sysdimet_gamma <- mebn.bipartite_model(reaction_graph = initial_gamma_graph,
                                    assumed_targets = assumedtargets, 
                                    group_column = "SUBJECT_ID",
                                    local_estimation = mebn.sampling,
-                                   local_model_cache = "models/BLMM_gamma/identity", 
-                                   stan_model_file = "mebn/BLMM_gamma_hierarchical.stan",
+                                   local_model_cache = "models/BLMM_gamma", 
+                                   stan_model_file = "mebn/BLMM_gamma.stan",
                                    normalize_values = TRUE)
 
 write.graph(sysdimet_gamma, "graphs/sysdimet_gamma.graphml", "graphml")
@@ -209,7 +209,7 @@ The visual comparison of the true and estimated distributions of blood test vari
 
 
 ```{r gamma_ppc, echo=FALSE, eval=TRUE, message=FALSE, cache=TRUE}
-mebn.target_dens_overlays("BLMM_gamma/identity/", assumedtargets, sysdimet)
+mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 ```
 
 **Graph probability approximation with LOO**
@@ -219,7 +219,7 @@ Besides the visual inspection, we can also compare the models using LOO-PSIS inf
 This shows how the local distributions with Normal and Gamma distribution compare to each other
 
 ```{r, normal_gamma_loo, message=FALSE, warning=FALSE, cache=TRUE, echo=TRUE}
-normal_vs_gamma <- mebn.LOO_comparison(assumedtargets, "BLMM_normal", "BLMM_gamma/identity")
+normal_vs_gamma <- mebn.LOO_comparison(assumedtargets, "BLMM_normal", "BLMM_gamma")
 ```
 
 ```{r, plot_normal_gamma_loo, echo=FALSE, fig.height=5}
@@ -269,7 +269,7 @@ mebn.target_dens_overlays("BLMM_gamma/ar1/", assumedtargets, sysdimet)
 Expected predictive performance (ELPD) is also higher for AR(1) model
 
 ```{r gamma_ar1_loo, message=FALSE, warning=FALSE, cache=TRUE, echo=TRUE}
-ar0_vs_ar1 <- mebn.LOO_comparison(assumedtargets, "BLMM_gamma/identity", "BLMM_gamma/ar1")
+ar0_vs_ar1 <- mebn.LOO_comparison(assumedtargets, "BLMM_gamma", "BLMM_gamma/ar1")
 
 ```
 ```{r ar0_ar1_table, message=FALSE, warning=FALSE, cache=TRUE, echo=FALSE}
@@ -327,7 +327,7 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
                                    group_column = "SUBJECT_ID",
                                    local_estimation = mebn.sampling,
                                    local_model_cache = paste0("models/BLMM_gamma/ar1_rhs/no_holdout"), 
-                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_pred.stan",
+                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv_ppc.stan",
                                    reg_params = shrinkage_parameters,
                                    normalize_values = TRUE)
 
@@ -341,125 +341,31 @@ Execution of the k-fold cross-validation is done in a separated notebook (cross-
 ```{r, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
 
-# Summary matrix for RHS model with in-sample data
+# Collect the precitive performance of different models to same table
+summary.mat <- matrix(0, nrow=0,ncol=6)
+colnames(summary.mat) <- c('model', 'week 4', 'week 8', 'week 12', '12 week change', 'average accuracy')
 
-summary.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-rownames(summary.mat) <- assumedtargets$Name
-colnames(summary.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
+eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+saveRDS(eval.mat, "evals/RHS-insample-eval.rds")
+summary.mat <- rbind(summary.mat, eval.mat)
 
-allrep <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
-
-number_of_preds <- 0
-amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-
-for (subject_number in 1:amount_subjects)
-{
-  number_of_preds <- number_of_preds + 1
-  
-  rep_response <- get_rep_response(allrep, subject_number)
-  true_response <- get_true_response(subject_number)
-  
-  rep_delta <- make_delta(rep_response)
-  true_delta <- make_delta(true_response)
-  
-  sign_matrix <- sign(rep_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
-  
-  summary.mat <- summary.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
-}
-
-percent.mat <- summary.mat/number_of_preds * 100
-
-percent.mat <- cbind(percent.mat, rowMeans(percent.mat[,1:3]))
-colnames(percent.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
-
-# add non-shrinked evaluation in same table
-allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
-
-summary.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-rownames(summary.mat) <- assumedtargets$Name
-number_of_preds <- 0
-
-for (subject_number in 1:amount_subjects)
-{
-  number_of_preds <- number_of_preds + 1
-  
-  rep_response <- get_rep_response(allrep_norhs, subject_number)
-  true_response <- get_true_response(subject_number)
-  
-  rep_delta <- make_delta(rep_response)
-  true_delta <- make_delta(true_response)
-  
-  sign_matrix <- sign(rep_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
-  
-  summary.mat <- summary.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
-}
-
-percent_nonrhs.mat <- summary.mat/number_of_preds * 100
-
-percent_nonrhs.mat <- cbind(percent_nonrhs.mat, rowMeans(percent_nonrhs.mat[,1:3]))
-
-
-percent.mat <- rbind(percent.mat, percent_nonrhs.mat)
-percent.mat <- round(percent.mat, 0)
-percent.mat
+eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", amount_of_subjects = length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+saveRDS(eval.mat, "no-RHS-insample-eval.rds")
+summary.mat <- rbind(summary.mat, eval.mat)
 
 ```
 
-
-```{r k-fold_eval, message=FALSE, warning=FALSE}
-source("model_eval_functions.r")
-
-# Summary matrix for RHS model with out-of-sample data
-
-summary.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-rownames(summary.mat) <- assumedtargets$Name
-colnames(summary.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
-
-number_of_preds <- 0
-amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-
-for (subject_number in c(2,5,7,11))
-{
-  number_of_preds <- number_of_preds + 1
-  subject_number <- 2
-  #localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject_number)
-  localfit_directory <- paste0("models/BLMM_gamma/ar1_rhs/", subject_number)
-
-  pred_response <- get_pred_response(localfit_directory)
-  true_response <- get_true_response(subject_number)
-
-  pred_delta <- make_delta(pred_response)
-  true_delta <- make_delta(true_response)
-  
-  sign_matrix <- sign(pred_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
-  
-  summary.mat <- summary.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
-}
-
-summary.mat
-percent_pred.mat <- summary.mat/number_of_preds * 100
-
-percent_pred.mat <- cbind(percent_pred.mat, rowMeans(percent_pred.mat[,1:3]))
-colnames(percent_pred.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
-
-percent_pred.mat <- round(percent_pred.mat, 0)
-percent_pred.mat
-```
-
-
-This visualization summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
-
+This table  summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
 
 ```{r model_summary}
+summary.mat <- summary.mat[order(rownames(summary.mat)),]
+summary.mat[,2:6] <- paste0(summary.mat[,2:6], "%")
 
-kable(percent.mat) %>%
+kable(summary.mat) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
   row_spec(0,bold=TRUE)
 
-#kable(percent.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#kable(summary.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
 #  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
 
