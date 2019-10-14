@@ -12,7 +12,7 @@ abstract: This notebook is a supplemential material for the article. The noteboo
 
 ```{r setup, include=FALSE}
 library(knitr)
-library(kableExtra) # for good looking tables
+library(kableExtra) # for HTML and Latex tables
 
 knitr::opts_chunk$set(echo = TRUE, fig.align="center")
 
@@ -34,7 +34,7 @@ In this work we propose a Bayesian network as an appealing way to model and pred
 
 #Motivating example of personal nutrition data
 
-As an example, we analyze a dataset from the Sysdimet study [@pmid21901116] that contains repeated measurements of 17 nutrients, some basic information about patients (gender, medication) and their corresponding blood test results. 
+As an example, we analyze a dataset from the Sysdimet study [@pmid21901116] that contains four repeated measurements of 17 nutrients, some basic information about patients (gender, medication) and their corresponding blood test results, from 106 patients. 
 
 ```{r data_loading, echo=FALSE, message=FALSE}
 
@@ -49,6 +49,7 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
+Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are plot here for brevity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
 
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=8, fig.width=6, message=FALSE}
 library(ggplot2)
@@ -89,10 +90,11 @@ grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, pad
 
 ```
 
+When the future direction of the blood test levels can be predicted, the typical and personal importance of nutrients contributing this change be estimated from model parameters. 
 
 #Definition of the nutritional effects model
 
-To ease the graph search, we focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model.  
+We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model.  
 
 Let us denote the graph of interconnected nutrients and responses with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
 
@@ -172,16 +174,10 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We can evaluate the model fit by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well.
+We can evaluate the model fit by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
 
-```{r normal_model_ppc, fig.height = 4, fig.width = 4, fig.align = "center", echo=FALSE, eval=TRUE, message=FALSE, cache=FALSE}
-# Here a PPC plot of blood insulin illustrates the problem with fitting Normal distribution to biometric data that is positive and many times right skewed. 
-normal_targets <- assumedtargets[assumedtargets$Name=="fshdl",]
-normal_targets <- assumedtargets
-normal_targets$ScaleMin <- -10
-normal_targets$ScaleMax <- 25
-
-mebn.target_dens_overlays("BLMM_normal/", normal_targets, sysdimet)
+```{r normal_model_ppc, echo=FALSE, eval=TRUE, message=FALSE, cache=FALSE}
+mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 ```
 
 
@@ -205,8 +201,7 @@ sysdimet_gamma <- mebn.bipartite_model(reaction_graph = initial_gamma_graph,
 write.graph(sysdimet_gamma, "graphs/sysdimet_gamma.graphml", "graphml")
 ```
 
-The visual comparison of the true and estimated distributions of blood test variables shows that Gamma distribution follows the true distributions quite well. The estimate has lots of variance and we should focus on that next.
-
+The visual comparison of the true and estimated distributions of blood test variables shows that Gamma distribution follows the true distributions quite well. 
 
 ```{r gamma_ppc, echo=FALSE, eval=TRUE, message=FALSE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
@@ -235,13 +230,13 @@ The model with highest expected log predictive density (ELPD) will have the high
 
 **Modeling the varying response time with an autocorrelation structure**
 
-In the dataset the observations from patients' food diaries and blood tests have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated residuals, we add an autocorrelation structure to the model. As there are only four observations from each patient, we consider only one previous residual for each observation.
-
-In Stan model this AR(1) structure of correlated observations is calculated simply with 
+In the dataset the observations from patients' food diaries and blood tests have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated observations, we add an autocorrelation process to the model by adding an estimated portion of previous measurement to the linear predictor
 
 ```
 mu[n] += Y[n-1] * ar1
 ```      
+
+This coefficient 'ar1' is estimated separately for every response.
 
 ```{r graph_with_gamma_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -278,7 +273,7 @@ kable(ar0_vs_ar1) %>%
   row_spec(0,bold=TRUE)
 ```
 
-It is interesting also to compare the AR(1) coefficients of different local distributions at the graph. For HDL cholesterol (fshdl), combined cholesterol (fskol) and the blood glucose (fpgluk) the positive AR(1) coefficient indicates that the effect of nutrition spans longer than one week 
+It is interesting also to compare the AR(1) coefficients of different local distributions at the graph. Blood insulin (fsins) has largest AR(1) coefficient indicating that successive measurements are most correlated and the values are not changing as rapidly as with other measurements. Credible interval for cholesterol measurements includes zero indicating that autocorrelation is very low or non-existent between two measurements.
 
 ```{r ar1_comparison, message=FALSE, warning=FALSE, cache=TRUE}
 ar1_comparison <- mebn.AR_comparison(assumedtargets, "BLMM_gamma/ar1")
@@ -334,6 +329,111 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
 ```
 
+```{r gamma_ar1_rhs_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
+```
+
+Let us compare the model candidates with MSE
+
+```{r MSE comparison}
+
+#allrep_normal <- get_rep_response_for_all("BLMM_normal/")
+#allrep_gamma <- get_rep_response_for_all("BLMM_gamma/")
+#allrep_rhs <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
+#allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
+
+# Normal distribution model
+mse.mat <- matrix(0, nrow=0,ncol=7)
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_normal, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("Normal", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+# Gamma distribution model without autocorrelation
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_gamma, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("Gamma", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+# Gamma model with AR(1) structure
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_norhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("Gamma AR(1)", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+# Gamma model with AR(1) structure and RHS prior on betas
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_rhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("Gamma AR(1) RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+colnames(mse.mat)[1] <- "model"
+colnames(mse.mat)[7] <- "MSE"
+
+saveRDS(mse.mat, "evaluations/MSE-matrix.rds")
+mse.mat <- readRDS(file="evaluations/MSE-matrix.rds")
+
+mse.mat
+
+```
+
+```{r model_mse}
+
+kable(mse.mat) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
+
+#kable(summary.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
+
+```
+
 # Evaluation of the model's predictive performance 
 
 Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and analyzed here.
@@ -345,12 +445,24 @@ source("model_eval_functions.r")
 summary.mat <- matrix(0, nrow=0,ncol=6)
 colnames(summary.mat) <- c('model', 'week 4', 'week 8', 'week 12', '12 week change', 'average accuracy')
 
-eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-saveRDS(eval.mat, "evals/RHS-insample-eval.rds")
+if (!file.exists("evaluations/RHS-insample-eval.rds"))
+{
+  eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+  saveRDS(eval.mat, "evaluations/RHS-insample-eval.rds")
+} else {
+  eval.mat <- readRDS("evaluations/RHS-insample-eval.rds")
+}
+
 summary.mat <- rbind(summary.mat, eval.mat)
 
-eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", amount_of_subjects = length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-saveRDS(eval.mat, "no-RHS-insample-eval.rds")
+if (!file.exists("evaluations/RHS-insample-eval.rds"))
+{
+  eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+  saveRDS(eval.mat, "evaluations/no-RHS-insample-eval.rds")
+} else {
+  eval.mat <- readRDS("evaluations/no-RHS-insample-eval.rds")
+}
+
 summary.mat <- rbind(summary.mat, eval.mat)
 
 ```
@@ -370,30 +482,6 @@ kable(summary.mat) %>%
 #  row_spec(0,bold=TRUE)
 
 ```
-
-```{r MSE}
-
-#allrep <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
-
-number_of_preds <- 0
-amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-
-for (subject_number in 1:amount_subjects)
-{
-  #subject_number <- 56
-  
-  rep_response <- get_rep_response(allrep, subject_number)
-  true_response <- get_true_response(subject_number)
-  
-  mse_rows <- (rep_response - true_response)^2
-  mse <- round(rowMeans(mse_rows), 2)
-  
-  print(mse)
-}
-
-```
-
-
 
 #Typical effects of nutrition, and variance from the typical effects
 
@@ -518,7 +606,8 @@ feature_index <- c(1:nrow(assumedpredictors))
 personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
-modelcache <- "BLMM_gamma/ar1_rhs/no_holdout/"
+# Use non-shrinked model for clusters, so that they match to typical effects
+modelcache <- "BLMM_gamma/ar1/"
 
 # We could fetch a personal graph for all patients, but it is more effective to extract estimations directly from MCMC-samples to data frames
 
@@ -584,7 +673,7 @@ By looking previous diagram we see that there are four clearly identifiable grou
 
 **The effect of cholesterol medication**
 
-At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and blue and red bars denote a deviation from this typical mean.
+At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and bars denote a deviation from this typical mean.
 
 ```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=7, fig.height=7}
 source("mebn/MEBN.r")
@@ -684,7 +773,7 @@ feature_index <- feature_index[-c(match("sukupuoli", assumedpredictors$Name),
 personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
-modelcache <- "BLMM_gamma/ar1_rhs/no_holdout/"
+modelcache <- "BLMM_gamma/ar1/"
 
 for (i in c(1:nrow(assumedtargets)))
 {
@@ -714,7 +803,7 @@ for (i in c(1:nrow(assumedtargets)))
 }
 ```
 
-```{r, echo=FALSE, eval=FALSE, fig.height=6}
+```{r, echo=FALSE, eval=FALSE, fig.height=3}
 # Number of clusters with nutritional effects only
 
 library(stats)
