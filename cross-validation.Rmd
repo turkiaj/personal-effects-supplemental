@@ -57,7 +57,7 @@ shrinkage_parameters <- within(list(),
 
 Here we evaluate a separate model for each k (106) persons at the data while holding out all (4) measurements of one person at the time
 
-```{r nfold_holdout, echo=FALSE, eval=FALSE, message=FALSE}
+```{r nfold_holdout, echo=FALSE, eval=TRUE, message=FALSE}
 library(igraph)
 
 # Cross-validation models are stored separate folders, one for each patient.
@@ -86,7 +86,7 @@ for (holdout_subject in levels(sysdimet$SUBJECT_ID))
                                      reg_params = shrinkage_parameters,
                                      normalize_values = TRUE)
   
-    write.graph(sysdimet_gamma_ar1_rhs_cv, paste0(cvdir, "/subject_", holdout_number, ".graphml", "graphml"))
+    write.graph(sysdimet_gamma_ar1_rhs_cv, paste0(cvdir, "/subject_", holdout_subject, ".graphml", "graphml"))
   }
 }
 ```
