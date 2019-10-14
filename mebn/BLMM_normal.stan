@@ -104,10 +104,10 @@ generated quantities {
   for (n in 1:N) 
   {
     // In Bayesian statistics, personal variation is part of mu, not variance
-    Y_rep[n] = lognormal_rng(beta_Intercept + Xp[n] * beta + Z[n] * b[group[n]], sigma_e);
+    Y_rep[n] = normal_rng(beta_Intercept + Xp[n] * beta + Z[n] * b[group[n]], sigma_e);
     
     // Compute log-Likelihood for later LOO comparison of the models 
-    log_lik[n] = lognormal_lpdf(Y[n] | beta_Intercept + Xp[n] * beta + Z[n] * b[group[n]], sigma_e);
+    log_lik[n] = normal_lpdf(Y[n] | beta_Intercept + Xp[n] * beta + Z[n] * b[group[n]], sigma_e);
   }
 
   // Finally, sample personal effects for each nutrient

@@ -12,7 +12,7 @@ abstract: This notebook is a supplemential material for the article. The noteboo
 
 ```{r setup, include=FALSE}
 library(knitr)
-library(kableExtra) # for good looking tables
+library(kableExtra) # for HTML and Latex tables
 
 knitr::opts_chunk$set(echo = TRUE, fig.align="center")
 
@@ -334,6 +334,65 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
 ```
 
+Let us compare the model candidates with MSE
+
+```{r MSE comparison}
+
+allrep_rhs <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
+allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
+
+mse.mat <- matrix(0, nrow=0,ncol=7)
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_norhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("No-RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_rhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+colnames(mse.mat)[1] <- "model"
+colnames(mse.mat)[7] <- "MSE"
+
+saveRDS(mse.mat, "evaluations/MSE-matrix.rds")
+mse.mat <- readRDS(file="evaluations/MSE-matrix.rds")
+
+```
+
+```{r model_mse}
+
+kable(mse.mat) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
+
+#kable(summary.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
+
+```
+
 # Evaluation of the model's predictive performance 
 
 Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and analyzed here.
@@ -345,12 +404,24 @@ source("model_eval_functions.r")
 summary.mat <- matrix(0, nrow=0,ncol=6)
 colnames(summary.mat) <- c('model', 'week 4', 'week 8', 'week 12', '12 week change', 'average accuracy')
 
-eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-saveRDS(eval.mat, "evals/RHS-insample-eval.rds")
+if (!file.exists("evaluations/RHS-insample-eval.rds"))
+{
+  eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+  saveRDS(eval.mat, "evaluations/RHS-insample-eval.rds")
+} else {
+  eval.mat <- readRDS("evaluations/RHS-insample-eval.rds")
+}
+
 summary.mat <- rbind(summary.mat, eval.mat)
 
-eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", amount_of_subjects = length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-saveRDS(eval.mat, "no-RHS-insample-eval.rds")
+if (!file.exists("evaluations/RHS-insample-eval.rds"))
+{
+  eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
+  saveRDS(eval.mat, "evaluations/no-RHS-insample-eval.rds")
+} else {
+  eval.mat <- readRDS("evaluations/no-RHS-insample-eval.rds")
+}
+
 summary.mat <- rbind(summary.mat, eval.mat)
 
 ```
@@ -370,30 +441,6 @@ kable(summary.mat) %>%
 #  row_spec(0,bold=TRUE)
 
 ```
-
-```{r MSE}
-
-#allrep <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
-
-number_of_preds <- 0
-amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-
-for (subject_number in 1:amount_subjects)
-{
-  #subject_number <- 56
-  
-  rep_response <- get_rep_response(allrep, subject_number)
-  true_response <- get_true_response(subject_number)
-  
-  mse_rows <- (rep_response - true_response)^2
-  mse <- round(rowMeans(mse_rows), 2)
-  
-  print(mse)
-}
-
-```
-
-
 
 #Typical effects of nutrition, and variance from the typical effects
 
@@ -518,7 +565,8 @@ feature_index <- c(1:nrow(assumedpredictors))
 personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
-modelcache <- "BLMM_gamma/ar1_rhs/no_holdout/"
+# Use non-shrinked model for clusters, so that they match to typical effects
+modelcache <- "BLMM_gamma/ar1/"
 
 # We could fetch a personal graph for all patients, but it is more effective to extract estimations directly from MCMC-samples to data frames
 
@@ -584,7 +632,7 @@ By looking previous diagram we see that there are four clearly identifiable grou
 
 **The effect of cholesterol medication**
 
-At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and blue and red bars denote a deviation from this typical mean.
+At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and bars denote a deviation from this typical mean.
 
 ```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=7, fig.height=7}
 source("mebn/MEBN.r")
@@ -684,7 +732,7 @@ feature_index <- feature_index[-c(match("sukupuoli", assumedpredictors$Name),
 personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
-modelcache <- "BLMM_gamma/ar1_rhs/no_holdout/"
+modelcache <- "BLMM_gamma/ar1/"
 
 for (i in c(1:nrow(assumedtargets)))
 {
@@ -714,7 +762,7 @@ for (i in c(1:nrow(assumedtargets)))
 }
 ```
 
-```{r, echo=FALSE, eval=FALSE, fig.height=6}
+```{r, echo=FALSE, eval=FALSE, fig.height=3}
 # Number of clusters with nutritional effects only
 
 library(stats)
