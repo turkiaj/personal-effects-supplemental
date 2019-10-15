@@ -337,10 +337,10 @@ Let us compare the model candidates with MSE
 
 ```{r MSE comparison}
 
-#allrep_normal <- get_rep_response_for_all("BLMM_normal/")
-#allrep_gamma <- get_rep_response_for_all("BLMM_gamma/")
-#allrep_rhs <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
-#allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
+allrep_normal <- get_rep_response_for_all("BLMM_normal/")
+allrep_gamma <- get_rep_response_for_all("BLMM_gamma/")
+allrep_rhs <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
+allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
 
 # Normal distribution model
 mse.mat <- matrix(0, nrow=0,ncol=7)
