@@ -118,7 +118,9 @@ generated quantities {
   real mu_hat;
   real g_beta_hat;
   vector[k-1] personal_effect[J];
-
+  int group_size = 0;     // group variables for AR computation
+  int current_group = -1; // group variables for AR computation
+  
   // Correlation matrix of random-effects, C = L'L
   //C = multiply_lower_tri_self_transpose(L); 
   
@@ -127,6 +129,17 @@ generated quantities {
   for (n in 1:N) 
   {
     mu_hat = beta_Intercept + offset + X_t[n] * beta + Z_t[n] * b[group[n]];
+    
+    if (current_group != group[n]) {
+      current_group = group[n];
+      group_size = 1;
+    } 
+    else
+      group_size += 1;
+
+    // - add autoregression coefficient from previous possibly correlated observation 
+    if (group_size > 1)
+      mu_hat += Y[n-1] * ar1;    
 
     g_beta_hat = g_alpha / mu_hat;
     

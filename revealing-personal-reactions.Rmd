@@ -49,6 +49,7 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
+
 Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are plot here for brevity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
 
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=8, fig.width=6, message=FALSE}
@@ -92,9 +93,9 @@ grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, pad
 
 When the future direction of the blood test levels can be predicted, the typical and personal importance of nutrients contributing this change be estimated from model parameters. 
 
-#Definition of the nutritional effects model
+#Mixed-effect Bayesian network
 
-We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model.  
+We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model can be found at the main article section 3.
 
 Let us denote the graph of interconnected nutrients and responses with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
 
@@ -113,7 +114,7 @@ This turns the problem to finding a graph that is most probable given data. To e
 
 The joint probability of the graph \(P(G|D)\) can furthermore factorized into separate local probability distributions [@Bae2016, @Koller:2009:PGM:1795555] by their \textit{Markov blankets}. Hierarchical mixed-effect estimation allows us to study the distributions in both typical and personal levels.
 
-**Hierarchical estimation of the local distributions**
+##Hierarchical estimation of the local distributions
 
 The joint probability distribution of the graph is factorized into separate distributions. We assume that the blood test random variables $Y_i$ are affected by a linear combination of the nutrient variables $pa(Y_i)$. The set of parameters describing this effect, $\phi_i$, can be split into typical $\beta$ and personal $b$ parts. We assume that the actual data denoted by the random variables follows distributions from the exponential family and we can use some link function to use this linear predictor.
 
@@ -123,11 +124,11 @@ The joint probability distribution of the graph is factorized into separate dist
 {P}({D}|{G}){P}({G})
 & = \prod_{i=1}^{v} {P}({D}|{G_i}){P}({G_i}) \\
 & = \prod_{i=1}^{v} {P}({Y_i}|{pa(Y_i), \phi_i}){P}({G_i}) \\
-& = \prod_{i=1}^{v} {EXPFAM}({Y_i} | pa(Y_i)\beta_i + pa_Z(Y_i)b_i, \sigma^2){P}({G_i})
+& = \prod_{i=1}^{v} {EXPFAM}({Y_i} | pa(Y_i)\beta_i + pa_Z(Y_i)b_i){P}({G_i})
 \end{split}
 \end{align}
 
-Note that while this formulation generalizes to graphs with multiple levels, we have a prior assumption, $P(G)$, that the structure of our dataset is a bipartite graph. 
+Note that while this formulation generalizes to graphs with multiple levels, we have a prior assumption, $P(G)$, that the structure of our dataset is a bipartite graph 
 
 ```{r graph, fig.height = 8, fig.width = 10, fig.align = "center", echo=FALSE, message=FALSE}
 library(igraph)
@@ -157,6 +158,8 @@ plot(initial_graph,
 
 We assume a connection from every nutrient and personal information to every blood test value at the dataset. The model search is then focused on to estimating optimal coefficients $\beta$ and $b$ that we use to define the strength of the connection. It is also important to find correct probability distributions for the random variables.
 
+#Model development
+
 Our starting assumption is that both nutrients and the blood test values are normally distributed. This assumption may be naive as it allows the blood tests to have negative values. We normalize all the input values to same scale, so that the estimated regression coefficients can be used as a indicators of connection strenght.
 
 ```{r graph_with_normal_rvs, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
@@ -174,14 +177,14 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We can evaluate the model fit by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
+We evaluate the model candidates fit by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
 
 ```{r normal_model_ppc, echo=FALSE, eval=TRUE, message=FALSE, cache=FALSE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 ```
 
 
-**Developing the model beyond normal distributions**
+##Developing the model beyond normal distributions
 
 More realistic probability distribution for blood test values would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
 
@@ -207,28 +210,9 @@ The visual comparison of the true and estimated distributions of blood test vari
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 ```
 
-**Graph probability approximation with LOO**
+The visual PPC inspection shows that the Gamma distribution fit generally better to responses than Normal distribution, but cholesterol values are still systematically estimated too low (fsldl and fskol) or too high (fshdl).
 
-Besides the visual inspection, we can also compare the models using LOO-PSIS information criteria (@Vehtari:2017:PBM:3095252.3095323). It uses log probability that is calculated as part of the Stan models. We can approximate the probability of the whole graph by summing over the expected log predictive densities (ELPD) of every distict local distribution at the graph.
-
-This shows how the local distributions with Normal and Gamma distribution compare to each other
-
-```{r, normal_gamma_loo, message=FALSE, warning=FALSE, cache=TRUE, echo=TRUE}
-normal_vs_gamma <- mebn.LOO_comparison(assumedtargets, "BLMM_normal", "BLMM_gamma")
-```
-
-```{r, plot_normal_gamma_loo, echo=FALSE, fig.height=5}
-kable(normal_vs_gamma, caption = "Table shows estimation of elpd_loo and its standard error") %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-  row_spec(0,bold=TRUE)
-
-```
-
-
-The model with highest expected log predictive density (ELPD) will have the highest posterior probability. Thus, we use it as a measure of overall model fit. As ELPD of the gamma model is highest, we should choose that for further development.
-
-
-**Modeling the varying response time with an autocorrelation structure**
+##Modeling corralated observations with an autocorrelation structure
 
 In the dataset the observations from patients' food diaries and blood tests have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated observations, we add an autocorrelation process to the model by adding an estimated portion of previous measurement to the linear predictor
 
@@ -236,7 +220,7 @@ In the dataset the observations from patients' food diaries and blood tests have
 mu[n] += Y[n-1] * ar1
 ```      
 
-This coefficient 'ar1' is estimated separately for every response.
+This coefficient 'ar1' is estimated separately for each response
 
 ```{r graph_with_gamma_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -255,23 +239,12 @@ write_graph(sysdimet_gamma_ar1, "graphs/sysdimet_gamma_ar1.graphml", "graphml")
 
 ```
 
-The autocorrelation structure seems to decrease the variance of the model
+The autocorrelation structure seems to decrease the variance of the model and correcting the systematical estimation errors from the previous model candidate
 
 ```{r gamma_ar1_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/ar1/", assumedtargets, sysdimet)
 ```
 
-Expected predictive performance (ELPD) is also higher for AR(1) model
-
-```{r gamma_ar1_loo, message=FALSE, warning=FALSE, cache=TRUE, echo=TRUE}
-ar0_vs_ar1 <- mebn.LOO_comparison(assumedtargets, "BLMM_gamma", "BLMM_gamma/ar1")
-
-```
-```{r ar0_ar1_table, message=FALSE, warning=FALSE, cache=TRUE, echo=FALSE}
-kable(ar0_vs_ar1) %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-  row_spec(0,bold=TRUE)
-```
 
 It is interesting also to compare the AR(1) coefficients of different local distributions at the graph. Blood insulin (fsins) has largest AR(1) coefficient indicating that successive measurements are most correlated and the values are not changing as rapidly as with other measurements. Credible interval for cholesterol measurements includes zero indicating that autocorrelation is very low or non-existent between two measurements.
 
@@ -286,7 +259,7 @@ kable(ar1_comparison) %>%
 
 All the estimations of LOO-PSIS include excessive percentage of bad Pareto k values, indicating that the LOO-PSIS approximation of the predictive performance cannot be fully trusted. This might be the hierarchy in data or high variance. As advised by Vehtari et al., an exact k-fold cross-validation should be conducted for the model.
 
-# Cross-validation with skrinkage prior model
+##Skrinkage prior model
 
 In our analysis, we use two models: 1) typical effects are better shown with previous model that has vague prior on beta coefficients, and 2) personal effects became clearer in a model that uses shrinkage prior on beta coefficients. This shrinkaged model is also faster to evaluate in k-fold setting and is possibly a better predictor.
 
@@ -322,9 +295,13 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
                                    group_column = "SUBJECT_ID",
                                    local_estimation = mebn.sampling,
                                    local_model_cache = paste0("models/BLMM_gamma/ar1_rhs/no_holdout"), 
-                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv_ppc.stan",
+                                   stan_model_file = "mebn/BLMM_normal_ar1_rhs_cv_ppc.stan",
                                    reg_params = shrinkage_parameters,
                                    normalize_values = TRUE)
+
+#                                   local_model_cache = paste0("models/BLMM_gamma/ar1_rhs/no_holdout"), 
+#                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv_ppc.stan",
+
 
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
 ```
@@ -333,9 +310,16 @@ write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml"
 mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
 ```
 
-Let us compare the model candidates with MSE
+Visual comparison with posterior predictive checks seem to favor this model. Let us confirm with numerical metrics.
+
+#Evaluation of the models' fit and predictive performance 
+
+##Comparison with in-sample data
+
+Following compares different model candidates posterior predictive distributions with their true values using mean squared error (MSE) metrics
 
 ```{r MSE comparison}
+source("model_eval_functions.r")
 
 allrep_normal <- get_rep_response_for_all("BLMM_normal/")
 allrep_gamma <- get_rep_response_for_all("BLMM_gamma/")
@@ -415,6 +399,8 @@ mse.mat <- rbind(mse.mat, c("Gamma AR(1) RHS", round(colMeans(personal_mse), 2),
 colnames(mse.mat)[1] <- "model"
 colnames(mse.mat)[7] <- "MSE"
 
+# TODO: kerää matkan varrelta matriisiin vertailuja ja näytä lopuksi tulos
+
 saveRDS(mse.mat, "evaluations/MSE-matrix.rds")
 mse.mat <- readRDS(file="evaluations/MSE-matrix.rds")
 
@@ -434,40 +420,121 @@ kable(mse.mat) %>%
 
 ```
 
-# Evaluation of the model's predictive performance 
+It shows that Gamma distribution with AR(1) autocorralation structure fits to data best. Horseshoe prior on betas has shrinked some coefficients close to zero and it has increased overall MSE just a little. Interesting finding is that the blood insulin (fsins) is better modeled with Normal distribution. For the final MEBN we may replace Gamma AR(1) with Normal AR(1) model for fsins.
 
-Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and analyzed here.
+We can fit local distribution for fsins separately by defining a Bayesian network with just this one response node
 
-```{r, message=FALSE, warning=FALSE}
-source("model_eval_functions.r")
+```{r graph_with_normal_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
 
-# Collect the precitive performance of different models to same table
-summary.mat <- matrix(0, nrow=0,ncol=6)
-colnames(summary.mat) <- c('model', 'week 4', 'week 8', 'week 12', '12 week change', 'average accuracy')
+sysdimet_normal_ar1 <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                   inputdata = sysdimet,
+                                   predictor_columns = assumedpredictors, 
+                                   assumed_targets = only_fsins, 
+                                   group_column = "SUBJECT_ID",
+                                   local_estimation = mebn.sampling,
+                                   local_model_cache = "models/BLMM_normal/ar1", 
+                                   stan_model_file = "mebn/BLMM_normal_ar1.stan",
+                                   normalize_values = TRUE)
+```
 
-if (!file.exists("evaluations/RHS-insample-eval.rds"))
-{
-  eval.mat <- mebn_rep_accuracy("RHS", "BLMM_gamma/ar1_rhs/no_holdout/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-  saveRDS(eval.mat, "evaluations/RHS-insample-eval.rds")
-} else {
-  eval.mat <- readRDS("evaluations/RHS-insample-eval.rds")
-}
+# TODO: Gamma ar1 rhs cv mallista Normal-versio
 
-summary.mat <- rbind(summary.mat, eval.mat)
+```{r graph_with_normal_ar1_rhs, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
 
-if (!file.exists("evaluations/RHS-insample-eval.rds"))
-{
-  eval.mat <- mebn_rep_accuracy("no-RHS" ,"BLMM_gamma/ar1/", length(levels(sysdimet$SUBJECT_ID)), assumedtargets)
-  saveRDS(eval.mat, "evaluations/no-RHS-insample-eval.rds")
-} else {
-  eval.mat <- readRDS("evaluations/no-RHS-insample-eval.rds")
-}
+sysdimet_normal_ar1 <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                   inputdata = sysdimet,
+                                   predictor_columns = assumedpredictors, 
+                                   assumed_targets = only_fsins, 
+                                   group_column = "SUBJECT_ID",
+                                   local_estimation = mebn.sampling,
+                                   local_model_cache = "models/BLMM_normal/ar1_rhs", 
+                                   stan_model_file = "mebn/BLMM_normal_ar1_rhs.stan",
+                                   normalize_values = TRUE)
+```
 
-summary.mat <- rbind(summary.mat, eval.mat)
+
+```{r expfam_model}
+source("mebn/MEBN.r")
+
+# Other local distributions use Gamma AR1 model, but fsins uses Normal AR1
+target_models_dirs <- assumedtargets
+target_models_dirs$modelcache <- "models/BLMM_gamma/ar1"
+target_models_dirs[target_models_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
+
+initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+sysdimet_expfam_ar1 <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, target_models_dirs)
+
+write.graph(sysdimet_expfam_ar1, "graphs/sysdimet_expfam_ar1.graphml", "graphml")
+```
+
+
+
+##Comparison of out-of-sample predictions
+
+Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. During the cross-validation we have estimated a separated model for each of the 106 patients with the data from other 105 patient. Prediction is then made for the left out patient.
+
+Following table summarizes the prediction accuracy with mean squared error metrics
+
+```{r cv_mse}
 
 ```
 
-This table  summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
+
+##Comparison with other methods with a custom metrics
+
+MEBN model is compared with XGBoost machine learning model. XGBoost is a decision tree method that has proven to be effective.
+
+**MEBN out-of-sample predictions**
+
+```{r k-fold_eval, message=FALSE, warning=FALSE}
+source("model_eval_functions.r")
+
+# Summary matrix for RHS model with out-of-sample data
+
+summary.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+rownames(summary.mat) <- assumedtargets$Name
+colnames(summary.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
+
+number_of_preds <- 0
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
+
+for (subject_number in c(2,5,7,11))
+{
+  number_of_preds <- number_of_preds + 1
+  subject_number <- 2
+  #localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject_number)
+  localfit_directory <- paste0("models/BLMM_gamma/ar1_rhs/", subject_number)
+
+  pred_response <- get_pred_response(localfit_directory)
+  true_response <- get_true_response(subject_number)
+
+  pred_delta <- make_delta(pred_response)
+  true_delta <- make_delta(true_response)
+  
+  sign_matrix <- sign(pred_delta) == sign(true_delta)
+  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
+  
+  summary.mat <- summary.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+}
+
+summary.mat
+
+```
+
+**XGBoost comparison**
+
+```{r}
+#TODO: Load XGboost comparison to same matrix
+```
+
+
+##Results of the model comparison##
+
+This table summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
 
 ```{r model_summary}
 summary.mat <- summary.mat[order(rownames(summary.mat)),]
@@ -483,7 +550,11 @@ kable(summary.mat) %>%
 
 ```
 
-#Typical effects of nutrition, and variance from the typical effects
+TODO: Plot of MSE
+
+
+
+# Typical effects of nutrition, and variance from the typical effects
 
 We have now reached a reasonably good fit for the local distributions of the Bayesian network. Our code has extracted a graphical model from these  posterior distributions of random variables and parameters. The graph consists mean values of the posteriors and also their credible intervals. This is a lighter data structure for further analysis and allows also graph operations besides the regression modeling.
 
@@ -591,7 +662,7 @@ number_of_varying_effects <- nrow(effects_with_most_variance)
 mebn.plot_personal_variations(sysdimet_gamma_ar1, number_of_varying_effects)
 ```
 
-#Finding the clusters of personal reaction types
+# Finding the clusters of personal reaction types
 
 Although there are personal differences, it is likely that everyone is not behaving uniquely but there might exist similar groups of behavior. We can analyze personal differences in two ways. We can look the absolute magnitudes of effects and we can also look how persons differ from typical behavior or mean of the effect.
 
@@ -878,9 +949,9 @@ mebn.plot_clusters(cluster_data, cluster_index, assumedpredictors, assumedtarget
 ```
 In clusters 1 and 2 there are patients whose blood insulin levels react on lower and on higher than average. One interesting difference is lignin's effect to the blood insulin.
 
-#Personally predicted reaction types
+# Personally predicted reaction types
 
-Finally, we illustrate how big differences can be found amongst the persons and how nutritional recommendations differ for them.
+During the cross-validation we estimated personal models for each patient. Next we illustrate the differences within personal reaction types by picking few most distant ones. 
 
 
 ```{r personal_effects_holdout, echo=FALSE, eval=TRUE, message=FALSE}
@@ -990,4 +1061,4 @@ bayesplot_grid(plots = list(cholmed_plot1, cholmed_plot2), legends = FALSE)
 ```
 
 
-#References
+# References
