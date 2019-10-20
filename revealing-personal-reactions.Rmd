@@ -295,12 +295,9 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
                                    group_column = "SUBJECT_ID",
                                    local_estimation = mebn.sampling,
                                    local_model_cache = paste0("models/BLMM_gamma/ar1_rhs/no_holdout"), 
-                                   stan_model_file = "mebn/BLMM_normal_ar1_rhs_cv_ppc.stan",
+                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv_ppc.stan",
                                    reg_params = shrinkage_parameters,
                                    normalize_values = TRUE)
-
-#                                   local_model_cache = paste0("models/BLMM_gamma/ar1_rhs/no_holdout"), 
-#                                   stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv_ppc.stan",
 
 
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
@@ -439,21 +436,33 @@ sysdimet_normal_ar1 <- mebn.bipartite_model(reaction_graph = initial_graph,
                                    normalize_values = TRUE)
 ```
 
-# TODO: Gamma ar1 rhs cv mallista Normal-versio
+and also Normal AR(1) model with RHS prior on betas
 
-```{r graph_with_normal_ar1_rhs, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+```{r}
+# One RHS model with all data (no_holdout)
+holdout_index <- rep(0, nrow(sysdimet))
+```
+
+```{r, echo=TRUE, eval=FALSE, message=FALSE, warning=FALSE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
 
-sysdimet_normal_ar1 <- mebn.bipartite_model(reaction_graph = initial_graph, 
+sysdimet_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph, 
                                    inputdata = sysdimet,
+                                   targetdata = holdout_index,
                                    predictor_columns = assumedpredictors, 
                                    assumed_targets = only_fsins, 
                                    group_column = "SUBJECT_ID",
                                    local_estimation = mebn.sampling,
-                                   local_model_cache = "models/BLMM_normal/ar1_rhs", 
-                                   stan_model_file = "mebn/BLMM_normal_ar1_rhs.stan",
+                                   local_model_cache = paste0("models/BLMM_normal/ar1_rhs/no_holdout"), 
+                                   stan_model_file = "mebn/BLMM_normal_ar1_rhs_cv_ppc.stan",
+                                   reg_params = shrinkage_parameters,
                                    normalize_values = TRUE)
+
+```
+
+```{r normal_ar1_rhs_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+mebn.target_dens_overlays("BLMM_normal/ar1_rhs/no_holdout/", only_fsins, sysdimet)
 ```
 
 
