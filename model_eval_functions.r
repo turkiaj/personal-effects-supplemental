@@ -88,7 +88,30 @@ get_rep_response_for_all <- function(localfit_directory) {
   
   for (targetname in assumedtargets$Name)
   {
-    target_blmm <- mebn.get_localfit(paste0(localfit_directory,targetname))
+    target_blmm <- mebn.get_localfit(targetname, localfit_directory)
+    ms <- rstan::summary(target_blmm, pars=c("Y_rep"), probs=c(0.10, 0.90), na.rm = TRUE)
+    
+    if (is.null(rep_response))
+      rep_response <- as.vector(ms$summary[,c(1)])
+    else
+      rep_response <- rbind(rep_response, as.vector(ms$summary[,c(1)]))
+  }
+  
+  rownames(rep_response) <- as.vector(assumedtargets$Name)
+  
+  return(rep_response)
+}
+
+get_rep_response_for_expfam <- function(target_models_dirs) {
+  
+  rep_response <- NULL
+  
+  for (targetname in assumedtargets$Name)
+  {
+    localfit_directory <- target_models_dirs[target_models_dirs$Name==targetname,]$modelcache
+    
+    target_blmm <- mebn.get_localfit(targetname, localfit_directory)
+    
     ms <- rstan::summary(target_blmm, pars=c("Y_rep"), probs=c(0.10, 0.90), na.rm = TRUE)
     
     if (is.null(rep_response))

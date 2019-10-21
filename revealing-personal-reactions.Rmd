@@ -315,7 +315,7 @@ Visual comparison with posterior predictive checks seem to favor this model. Let
 
 Following compares different model candidates posterior predictive distributions with their true values using mean squared error (MSE) metrics
 
-```{r MSE comparison}
+```{r MSE comparison, eval=FALSE}
 source("model_eval_functions.r")
 
 allrep_normal <- get_rep_response_for_all("BLMM_normal/")
@@ -396,16 +396,12 @@ mse.mat <- rbind(mse.mat, c("Gamma AR(1) RHS", round(colMeans(personal_mse), 2),
 colnames(mse.mat)[1] <- "model"
 colnames(mse.mat)[7] <- "MSE"
 
-# TODO: kerää matkan varrelta matriisiin vertailuja ja näytä lopuksi tulos
-
-saveRDS(mse.mat, "evaluations/MSE-matrix.rds")
-mse.mat <- readRDS(file="evaluations/MSE-matrix.rds")
-
-mse.mat
+saveRDS(mse.mat, "evaluations/MSE-matrix1.rds")
 
 ```
 
-```{r model_mse}
+```{r model_mse1}
+mse.mat <- readRDS(file="evaluations/MSE-matrix1.rds")
 
 kable(mse.mat) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
@@ -417,7 +413,7 @@ kable(mse.mat) %>%
 
 ```
 
-It shows that Gamma distribution with AR(1) autocorralation structure fits to data best. Horseshoe prior on betas has shrinked some coefficients close to zero and it has increased overall MSE just a little. Interesting finding is that the blood insulin (fsins) is better modeled with Normal distribution. For the final MEBN we may replace Gamma AR(1) with Normal AR(1) model for fsins.
+It shows that Gamma distribution with AR(1) autocorralation structure fits to data best. Horseshoe prior on betas has shrinked some coefficients close to zero and it has increased overall MSE just a little. Interesting finding is that the blood insulin (fsins) is better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
 
 We can fit local distribution for fsins separately by defining a Bayesian network with just this one response node
 
@@ -465,22 +461,93 @@ sysdimet_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph,
 mebn.target_dens_overlays("BLMM_normal/ar1_rhs/no_holdout/", only_fsins, sysdimet)
 ```
 
-
-```{r expfam_model}
-source("mebn/MEBN.r")
-
+```{r}
 # Other local distributions use Gamma AR1 model, but fsins uses Normal AR1
-target_models_dirs <- assumedtargets
-target_models_dirs$modelcache <- "models/BLMM_gamma/ar1"
-target_models_dirs[target_models_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
+expfam_ar1_dirs <- assumedtargets
+expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
+expfam_ar1_dirs[target_models_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
-sysdimet_expfam_ar1 <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, target_models_dirs)
+expfam_ar1_rhs_dirs <- assumedtargets
+expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
+expfam_ar1_rhs_dirs[target_models_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
+```
 
-write.graph(sysdimet_expfam_ar1, "graphs/sysdimet_expfam_ar1.graphml", "graphml")
+```{r mse_expfam}
+source("model_eval_functions.r")
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
+mse.mat <- readRDS(file="evaluations/MSE-matrix1.rds")
+
+## EXPFAM AR(1)
+
+allrep_expfam_ar1 <- get_rep_response_for_expfam(expfam_ar1_dirs)
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_expfam_ar1, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("EXPFAM AR(1)", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+## EXPFAM AR(1) RHS
+
+allrep_expfam_ar1_rhs <- get_rep_response_for_expfam(expfam_ar1_rhs_dirs)
+
+personal_mse <- matrix(0, nrow=0,ncol=5)
+for (subject_number in 1:amount_subjects)
+{
+  rep_response <- get_rep_response(allrep_expfam_ar1_rhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  mse_rows <- (rep_response - true_response)^2
+  mse <- rowMeans(mse_rows)
+  
+  personal_mse <- rbind(personal_mse, mse)
+}
+
+model_mse <- mean(colMeans(personal_mse))
+mse.mat <- rbind(mse.mat, c("EXPFAM AR(1) RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+
+saveRDS(mse.mat, "evaluations/MSE-matrix2.rds")
 ```
 
 
+```{r expfam_ar1_model}
+source("mebn/MEBN.r")
+
+initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+sysdimet_expfam_ar1 <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, expfam_ar1_dirs)
+
+write.graph(sysdimet_expfam_ar1, "graphs/sysdimet_expfam_ar1.graphml", "graphml")
+```
+```{r expfam_ar1_rhs_model}
+source("mebn/MEBN.r")
+
+initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+sysdimet_expfam_ar1_rhs <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, expfam_ar1_rhs_dirs)
+
+write.graph(sysdimet_expfam_ar1_rhs, "graphs/sysdimet_expfam_ar1_rhs.graphml", "graphml")
+```
+
+```{r model_mse2}
+mse.mat <- readRDS(file="evaluations/MSE-matrix2.rds")
+
+kable(mse.mat) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
+
+#kable(summary.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
+
+```
 
 ##Comparison of out-of-sample predictions
 
@@ -572,17 +639,17 @@ Besides the random variables, the graph also includes the regression coefficient
 ```{r, typical_effects_figure, fig.height = 6, fig.width = 7, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
 source("mebn/MEBN.r")
 require(igraph)
-sysdimet_gamma_ar1 <- read_graph("graphs/sysdimet_gamma_ar1.graphml", "graphml")
-graph_layout <- mebn.plot_typical_effects(sysdimet_gamma_ar1, 20)
+sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
+graph_layout <- mebn.plot_typical_effects(sysdimet_expfam_ar1, 20)
 ```
 
 ```{r, echo=FALSE, message=FALSE, eval=TRUE}
 library(igraph)
 library(dplyr)
-sysdimet_gamma_ar1 <- read_graph("graphs/sysdimet_gamma_ar1.graphml", "graphml")
+sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
 
 # Query the graph for typical strengths of the effects
-allnodes <- V(sysdimet_gamma_ar1)
+allnodes <- V(sysdimet_expfam_ar1)
 beta <- allnodes[allnodes$type=="beta"]
 b_sigma <- allnodes[allnodes$type=="b_sigma"]
 
