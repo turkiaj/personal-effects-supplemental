@@ -44,16 +44,17 @@ For XGBoost, we prepare a dataset that contains all the predictors from past per
 # Predictors for FSHDL
 fshdl_input <- sysdimet
 
-# - we assume that previous measurement from week 0 was same as week 0
+# - this is not used, just the field is created
 fshdl_input$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
 
 fshdl_input[fshdl_input$WEEK == 4,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
 fshdl_input[fshdl_input$WEEK == 8,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 4,]$fshdl
 fshdl_input[fshdl_input$WEEK == 12,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 8,]$fshdl
 
-# try removing week 0 from training
+# remove week 0 from training
 fshdl_input <- fshdl_input[fshdl_input$WEEK >= 4,]
 
+# input fields only
 fshdl_input <- fshdl_input[c(as.vector(assumedpredictors$Name), "prev_fshdl")]
 
 # Target for FSHDL 
@@ -63,114 +64,179 @@ fshdl_input <- fshdl_input[c(as.vector(assumedpredictors$Name), "prev_fshdl")]
 fshdl_target <- sysdimet
 fshdl_target$label <- 0
 
-# - change of previous measurements
+# - target is the change from previous measurements
 fshdl_target[fshdl_target$WEEK == 12,]$label <- fshdl_target[fshdl_target$WEEK == 12,]$fshdl - fshdl_target[fshdl_target$WEEK == 8,]$fshdl
 fshdl_target[fshdl_target$WEEK == 8,]$label <- fshdl_target[fshdl_target$WEEK == 8,]$fshdl - fshdl_target[fshdl_target$WEEK == 4,]$fshdl
 fshdl_target[fshdl_target$WEEK == 4,]$label <- fshdl_target[fshdl_target$WEEK == 4,]$fshdl - fshdl_target[fshdl_target$WEEK == 0,]$fshdl
 
-# - we only the sign of change as label for learning
+# - only the sign of change as label for learning
 fshdl_target$label <- sign(fshdl_target$label)
 
 fshdl_target <- fshdl_target[c("WEEK", "label")]
+
+# remove week 0 from target
 fshdl_target <- fshdl_target[fshdl_target$WEEK >= 4,]
 
 # fix -1 sign to 0 label
 fshdl_target[fshdl_target$label == -1,] <- 0
 ```
 
+```{r}
+diet_input <- sysdimet
+
+# - this is not used, just the field is created
+diet_input$prev_fshdl <- diet_input[diet_input$WEEK == 0,]$fshdl
+diet_input$prev_fsldl <- diet_input[diet_input$WEEK == 0,]$fsldl
+diet_input$prev_fskol <- diet_input[diet_input$WEEK == 0,]$fskol
+diet_input$prev_fsins <- diet_input[diet_input$WEEK == 0,]$fsins
+diet_input$prev_fpgluk <- diet_input[diet_input$WEEK == 0,]$fpgluk
+
+diet_input[diet_input$WEEK == 4,]$prev_fshdl <- diet_input[diet_input$WEEK == 0,]$fshdl
+diet_input[diet_input$WEEK == 8,]$prev_fshdl <- diet_input[diet_input$WEEK == 4,]$fshdl
+diet_input[diet_input$WEEK == 12,]$prev_fshdl <- diet_input[diet_input$WEEK == 8,]$fshdl
+
+diet_input[diet_input$WEEK == 4,]$prev_fsldl <- diet_input[diet_input$WEEK == 0,]$fsldl
+diet_input[diet_input$WEEK == 8,]$prev_fsldl <- diet_input[diet_input$WEEK == 4,]$fsldl
+diet_input[diet_input$WEEK == 12,]$prev_fsldl <- diet_input[diet_input$WEEK == 8,]$fsldl
+
+diet_input[diet_input$WEEK == 4,]$prev_fskol <- diet_input[diet_input$WEEK == 0,]$fskol
+diet_input[diet_input$WEEK == 8,]$prev_fskol <- diet_input[diet_input$WEEK == 4,]$fskol
+diet_input[diet_input$WEEK == 12,]$prev_fskol <- diet_input[diet_input$WEEK == 8,]$fskol
+
+diet_input[diet_input$WEEK == 4,]$prev_fsins <- diet_input[diet_input$WEEK == 0,]$fsins
+diet_input[diet_input$WEEK == 8,]$prev_fsins <- diet_input[diet_input$WEEK == 4,]$fsins
+diet_input[diet_input$WEEK == 12,]$prev_fsins <- diet_input[diet_input$WEEK == 8,]$fsins
+
+diet_input[diet_input$WEEK == 4,]$prev_fpgluk <- diet_input[diet_input$WEEK == 0,]$fpgluk
+diet_input[diet_input$WEEK == 8,]$prev_fpgluk <- diet_input[diet_input$WEEK == 4,]$fpgluk
+diet_input[diet_input$WEEK == 12,]$prev_fpgluk <- diet_input[diet_input$WEEK == 8,]$fpgluk
+
+# remove week 0 from training
+diet_input <- diet_input[diet_input$WEEK >= 4,]
+
+# correct fields for training
+input_cols <- list()
+input_cols[["fshdl"]] <- c(as.vector(assumedpredictors$Name), "prev_fshdl")
+input_cols[["fsldl"]] <- c(as.vector(assumedpredictors$Name), "prev_fsldl")
+input_cols[["fskol"]] <- c(as.vector(assumedpredictors$Name), "prev_fskol")
+input_cols[["fsins"]] <- c(as.vector(assumedpredictors$Name), "prev_fsins")
+input_cols[["fpgluk"]] <- c(as.vector(assumedpredictors$Name), "prev_fpgluk")
+
+# Target 
+# 0 - next blood test measurement is same or lower than previous
+# 1 - next blood test measurement is higher than previous
+
+diet_target <- sysdimet
+
+# - target is the change from previous measurements
+# for every patient, week 12 is replaced by change from week 8 to week 12, etc
+diet_target[diet_target$WEEK == 12,]$fshdl <- diet_target[diet_target$WEEK == 12,]$fshdl - diet_target[diet_target$WEEK == 8,]$fshdl
+diet_target[diet_target$WEEK == 8,]$fshdl <- diet_target[diet_target$WEEK == 8,]$fshdl - diet_target[diet_target$WEEK == 4,]$fshdl
+diet_target[diet_target$WEEK == 4,]$fshdl <- diet_target[diet_target$WEEK == 4,]$fshdl - diet_target[diet_target$WEEK == 0,]$fshdl
+
+diet_target[diet_target$WEEK == 12,]$fsldl <- diet_target[diet_target$WEEK == 12,]$fsldl - diet_target[diet_target$WEEK == 8,]$fsldl
+diet_target[diet_target$WEEK == 8,]$fsldl <- diet_target[diet_target$WEEK == 8,]$fsldl - diet_target[diet_target$WEEK == 4,]$fsldl
+diet_target[diet_target$WEEK == 4,]$fsldl <- diet_target[diet_target$WEEK == 4,]$fsldl - diet_target[diet_target$WEEK == 0,]$fsldl
+
+diet_target[diet_target$WEEK == 12,]$fskol <- diet_target[diet_target$WEEK == 12,]$fskol - diet_target[diet_target$WEEK == 8,]$fskol
+diet_target[diet_target$WEEK == 8,]$fskol <- diet_target[diet_target$WEEK == 8,]$fskol - diet_target[diet_target$WEEK == 4,]$fskol
+diet_target[diet_target$WEEK == 4,]$fskol <- diet_target[diet_target$WEEK == 4,]$fskol - diet_target[diet_target$WEEK == 0,]$fskol
+
+diet_target[diet_target$WEEK == 12,]$fsins <- diet_target[diet_target$WEEK == 12,]$fsins - diet_target[diet_target$WEEK == 8,]$fsins
+diet_target[diet_target$WEEK == 8,]$fsins <- diet_target[diet_target$WEEK == 8,]$fsins - diet_target[diet_target$WEEK == 4,]$fsins
+diet_target[diet_target$WEEK == 4,]$fsins <- diet_target[diet_target$WEEK == 4,]$fsins - diet_target[diet_target$WEEK == 0,]$fsins
+
+diet_target[diet_target$WEEK == 12,]$fpgluk <- diet_target[diet_target$WEEK == 12,]$fpgluk - diet_target[diet_target$WEEK == 8,]$fpgluk
+diet_target[diet_target$WEEK == 8,]$fpgluk <- diet_target[diet_target$WEEK == 8,]$fpgluk - diet_target[diet_target$WEEK == 4,]$fpgluk
+diet_target[diet_target$WEEK == 4,]$fpgluk <- diet_target[diet_target$WEEK == 4,]$fpgluk - diet_target[diet_target$WEEK == 0,]$fpgluk
+
+# - only the sign of change as label for learning
+diet_target$fshdl <- sign(diet_target$fshdl)
+diet_target$fsldl <- sign(diet_target$fsldl)
+diet_target$fskol <- sign(diet_target$fskol)
+diet_target$fsins <- sign(diet_target$fsins)
+diet_target$fpgluk <- sign(diet_target$fpgluk)
+
+# remove week 0 from target
+diet_target <- diet_target[diet_target$WEEK >= 4,]
+
+# fix -1 sign to 0 label
+diet_target[diet_target$fshdl == -1,]$fshdl <- 0
+diet_target[diet_target$fsldl == -1,]$fsldl <- 0
+diet_target[diet_target$fskol == -1,]$fskol <- 0
+diet_target[diet_target$fsins == -1,]$fsins <- 0
+diet_target[diet_target$fpgluk == -1,]$fpgluk <- 0
+
+
+```
+
+This part should be cross-validated
 
 ```{r}
 library(xgboost)
+eval.mat <- matrix(0,ncol=2,nrow=0)
 
-n = nrow(fshdl_input)
-train.index = sample(n,floor(0.80*n))
-train.data = as.matrix(fshdl_input[train.index,])
-train.label = as.matrix(fshdl_target[train.index,]$label)
-test.data = as.matrix(fshdl_input[-train.index,])
-test.label = as.matrix(fshdl_target[-train.index,]$label)
+n <- nrow(diet_input)
 
-# Transform the two data sets into xgb.Matrix
-xgb.train = xgb.DMatrix(data=train.data,label=train.label)
-xgb.test = xgb.DMatrix(data=test.data,label=test.label)
-```
-
-```{r}
-num_class = 2
-params = list(
-  booster="gbtree",
-  eta=0.001,
-  max_depth=5,
-  gamma=3,
-  subsample=0.75,
-  colsample_bytree=1,
-  objective="multi:softprob",
-  eval_metric="mlogloss",
-  num_class=num_class
-)
-
-xgb.fit=xgb.train(
-  params=params,
-  data=xgb.train,
-  nrounds=10000,
-  nthreads=1,
-  early_stopping_rounds=10,
-  watchlist=list(val1=xgb.train,val2=xgb.test),
-  verbose=0
-)
-
-# TODO: importance matrix of predictors. do they match MEBN?
-
-```
-
-```{r}
-
-#eval.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-eval.mat <- matrix(0, nrow=1,ncol=3)
-
-i <- 1 
-for (w in c(4,8,12))
+for (target in assumedtargets$Name)
 {
-  # Prediction accuracy for different weeks 
-  week.index <- sysdimet$WEEK == w
+  model_input <- diet_input[input_cols[[target]]]
   
-  test.data = as.matrix(fshdl_input[week.index,])
-  test.label = as.matrix(fshdl_target[week.index,]$label)
+  train.index = sample(n,floor(0.80*n))
+  train.data = as.matrix(model_input[train.index,])
+  train.label = as.matrix(diet_target[train.index,][target])
+  
+  test.data = as.matrix(model_input[-train.index,])
+  test.label = as.matrix(diet_target[-train.index,][target])
+  
+  # Transform the two data sets into xgb.Matrix
+  xgb.train = xgb.DMatrix(data=train.data,label=train.label)
   xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+
+  num_class = 2
+  params = list(
+    booster="gbtree",
+    eta=0.001,
+    max_depth=5,
+    gamma=3,
+    subsample=0.75,
+    colsample_bytree=1,
+    objective="multi:softprob",
+    eval_metric="mlogloss",
+    num_class=num_class
+  )
   
-  xgb.pred = predict(xgb.fit,test.data,reshape=T)
+  model.xgb = xgb.train(
+    params=params,
+    data=xgb.train,
+    nrounds=10000,
+    nthreads=1,
+    early_stopping_rounds=10,
+    watchlist=list(val1=xgb.train,val2=xgb.test),
+    verbose=0
+  )
+
+  xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+    
+  xgb.pred = predict(model.xgb,test.data,reshape=T)
   xgb.pred = as.data.frame(xgb.pred)
   colnames(xgb.pred) = c(0,1)
-  
+    
   # Use the predicted label with the highest probability
   xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
   xgb.pred$label = test.label
-
+  
   # Calculate the final accuracy
-  result = sum(as.integer(xgb.pred$prediction==xgb.pred$label))/nrow(xgb.pred)
+  accuracy = sum(as.integer(xgb.pred$prediction==xgb.pred$label))/nrow(xgb.pred)  
 
-  eval.mat[1,i] <- sprintf("%1.0f", 100*result)
-  i <- i + 1
-}
+  # Cumulate result matrix
+  eval.mat <- rbind(eval.mat, c(target, accuracy))
+}  
 
-eval.mat
+saveRDS(eval.mat, "evaluations/xgboost-mat.rds")
+
 ```
-```{r}
-# Review the final model and results
-#xgb.fit
 
-# Predict outcomes with the test data
-xgb.pred = predict(xgb.fit,test.data,reshape=T)
-xgb.pred = as.data.frame(xgb.pred)
-colnames(xgb.pred) = c(0,1)
-
-# Use the predicted label with the highest probability
-xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
-xgb.pred$label = test.label
-
-# Calculate the final accuracy
-result = sum(xgb.pred$prediction==xgb.pred$label)/nrow(xgb.pred)
-print(paste("Final Accuracy =",sprintf("%1.2f%%", 100*result)))
-```
 
 ```{r}
 importance_matrix <- xgb.importance(model = xgb.fit)

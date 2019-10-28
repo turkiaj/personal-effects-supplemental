@@ -694,7 +694,7 @@ summary.mat
 ```{r xgboost}
 #TODO: Load XGboost comparison to same matrix
 
-xgboost.mat <- readRDS(file="evaluations/Class-matrix1.rds")
+xgboost.mat <- readRDS(file="evaluations/xgboost-mat.rds")
 
 ```
 
@@ -741,7 +741,7 @@ class_sum.mat <- readRDS(file="evaluations/Class-matrix1.rds")
 # TODO: Add out-of-sample MEBN
 
 # Add XGBoost
-class_sum.mat <- rbind(class_sum.mat, xgboost.mat)
+#class_sum.mat <- rbind(class_sum.mat, xgboost.mat)
 
 class_sum.mat[,1:5] <- paste0(class_sum.mat[,1:5], "%")
 
