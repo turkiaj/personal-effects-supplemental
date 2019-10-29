@@ -40,48 +40,6 @@ assumedtargets <- datadesc[datadesc$Order==200,]
 For XGBoost, we prepare a dataset that contains all the predictors from past period (nutrients and last response), and also label that tells if the next response goes up or down.
 
 ```{r}
-
-# Predictors for FSHDL
-fshdl_input <- sysdimet
-
-# - this is not used, just the field is created
-fshdl_input$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
-
-fshdl_input[fshdl_input$WEEK == 4,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 0,]$fshdl
-fshdl_input[fshdl_input$WEEK == 8,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 4,]$fshdl
-fshdl_input[fshdl_input$WEEK == 12,]$prev_fshdl <- fshdl_input[fshdl_input$WEEK == 8,]$fshdl
-
-# remove week 0 from training
-fshdl_input <- fshdl_input[fshdl_input$WEEK >= 4,]
-
-# input fields only
-fshdl_input <- fshdl_input[c(as.vector(assumedpredictors$Name), "prev_fshdl")]
-
-# Target for FSHDL 
-# 0 - next FSHDL measurement is same or lower than previous
-# 1 - next FSHDL measurement is higher than previous
-
-fshdl_target <- sysdimet
-fshdl_target$label <- 0
-
-# - target is the change from previous measurements
-fshdl_target[fshdl_target$WEEK == 12,]$label <- fshdl_target[fshdl_target$WEEK == 12,]$fshdl - fshdl_target[fshdl_target$WEEK == 8,]$fshdl
-fshdl_target[fshdl_target$WEEK == 8,]$label <- fshdl_target[fshdl_target$WEEK == 8,]$fshdl - fshdl_target[fshdl_target$WEEK == 4,]$fshdl
-fshdl_target[fshdl_target$WEEK == 4,]$label <- fshdl_target[fshdl_target$WEEK == 4,]$fshdl - fshdl_target[fshdl_target$WEEK == 0,]$fshdl
-
-# - only the sign of change as label for learning
-fshdl_target$label <- sign(fshdl_target$label)
-
-fshdl_target <- fshdl_target[c("WEEK", "label")]
-
-# remove week 0 from target
-fshdl_target <- fshdl_target[fshdl_target$WEEK >= 4,]
-
-# fix -1 sign to 0 label
-fshdl_target[fshdl_target$label == -1,] <- 0
-```
-
-```{r}
 diet_input <- sysdimet
 
 # - this is not used, just the field is created
@@ -112,7 +70,7 @@ diet_input[diet_input$WEEK == 8,]$prev_fpgluk <- diet_input[diet_input$WEEK == 4
 diet_input[diet_input$WEEK == 12,]$prev_fpgluk <- diet_input[diet_input$WEEK == 8,]$fpgluk
 
 # remove week 0 from training
-diet_input <- diet_input[diet_input$WEEK >= 4,]
+#diet_input <- diet_input[diet_input$WEEK >= 4,]
 
 # correct fields for training
 input_cols <- list()
@@ -158,7 +116,7 @@ diet_target$fsins <- sign(diet_target$fsins)
 diet_target$fpgluk <- sign(diet_target$fpgluk)
 
 # remove week 0 from target
-diet_target <- diet_target[diet_target$WEEK >= 4,]
+#diet_target <- diet_target[diet_target$WEEK >= 4,]
 
 # fix -1 sign to 0 label
 diet_target[diet_target$fshdl == -1,]$fshdl <- 0
@@ -234,7 +192,7 @@ for (target in assumedtargets$Name)
 }  
 
 saveRDS(eval.mat, "evaluations/xgboost-mat.rds")
-
+eval.mat
 ```
 
 
