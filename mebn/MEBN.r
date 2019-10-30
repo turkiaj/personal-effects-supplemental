@@ -1370,8 +1370,11 @@ mebn.plot_personal_variations <- function(reaction_graph, top_effects)
 
 ##################################################
 
-mebn.plot_clusters <- function(cluster_data, clusters_index, assumedpredictors, assumedtargets, keep_only_effects, feature_index, sort_by_amount = FALSE)
+mebn.plot_clusters <- function(cluster_data, cluster_spread, clusters_index, assumedpredictors, assumedtargets, keep_only_effects, feature_index, sort_by_amount = FALSE)
 {
+  # Number of items in all clusters
+  all_items <- sum(cluster_spread$Freq)
+  
   # Build effect names
   cluster_data$predictor <- rep(assumedpredictors[feature_index,]$Description,nrow(assumedtargets))
   cl <- rep(1,length(feature_index)) # number of predictors
@@ -1398,15 +1401,30 @@ mebn.plot_clusters <- function(cluster_data, clusters_index, assumedpredictors, 
   #plot_data$amount <- cluster_data.filtered$'1'
   plot_data$cluster <- i
   
+  cluster_labels <- c()
+  
+  # Items in cluster
+  cluster_items <- cluster_spread[cluster_spread[1]== i,]$Freq
+  cluster_items_perc <- round((cluster_items / all_items)*100, 1)
+  
+  cluster_labels <- c(cluster_labels, paste0("cluster ", i, " (", cluster_items, "/", all_items, ", ", cluster_items_perc, "%)"))
+  
   for (i in cluster_index[-c(1)])
   {
     temp_data <- cluster_data.filtered[c("effect")]
     temp_data$amount <- cluster_data.filtered[as.character(i)][,]
     temp_data$cluster <- i
     
+    cluster_items <- cluster_spread[cluster_spread[1]== i,]$Freq
+    cluster_items_perc <- round((cluster_items / all_items)*100, 1)
+    
+    cluster_labels <- c(cluster_labels, paste0("cluster ", i, " (", cluster_items, "/", all_items, ", ", cluster_items_perc, "%)"))
+    
     plot_data <- rbind(plot_data, temp_data)
   }
   
+  names(cluster_labels) <- cluster_index
+
   plot_data$below_above <- ifelse(plot_data$amount < 0, "below", "above")
   
   if (sort_by_amount == TRUE) {
@@ -1415,14 +1433,14 @@ mebn.plot_clusters <- function(cluster_data, clusters_index, assumedpredictors, 
       scale_fill_manual(values = c("#333333", "#999999")) +
       coord_flip() +
       theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) +
-      facet_wrap(~cluster)
+      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels))
   } else {  
     ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
       geom_bar(stat='identity', aes(fill=below_above), width=.5, show.legend = FALSE) +
       scale_fill_manual(values = c("#333333", "#999999")) +
       coord_flip() +
       theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) +
-      facet_wrap(~cluster)
+      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels))
   }  
 }
 

@@ -1042,14 +1042,11 @@ km <- kmeans(personal_variations_from_mean, centers = k)
 # Every patient can be assigned to some cluster based on how their reactions differ from average
 sysdimet$variation_group <- km$cluster 
 
-#effects_with_most_variance
-
-# TODO: Add info about patient distribution between clusters to plot_clusters-method
-
 # Plot the clusters
 variations_data <- as.data.frame(t(km$centers))
 cluster_index <- seq(1:k)
-mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
+cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
+mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 ```
 
 Cholesterol medication seems to dominate the clusters. There are patients for who cholesterol medication raises the blood insulin levels more than on average and for other group the raise is less than on average.
@@ -1076,8 +1073,9 @@ sysdimet$effect_group <- unlist(lapply(km$cluster,rep,observations_per_patient))
 variations_data <- as.data.frame(t(km$centers))
 #mebn.plot_clusters(variations_data, assumedpredictors, assumedtargets, largest_personal_effects, feature_index, sort_by_amount = TRUE)
 cluster_index <- seq(1:k)
-mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
-#mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
+cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
+
+mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 
 ```
 
@@ -1210,7 +1208,9 @@ sysdimet$variation_group <- km$cluster
 # Plot the clusters
 variations_data <- as.data.frame(t(km$centers))
 cluster_index <- seq(1:k)
-mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
+
+cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
+mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 ```
 
 
@@ -1232,10 +1232,9 @@ sysdimet$effect_group <- unlist(lapply(km$cluster,rep,observations_per_patient))
 # Plot the clusters
 cluster_data <- as.data.frame(t(km$centers))
 cluster_index <- seq(1:k)
-#mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, NULL, feature_index)
-mebn.plot_clusters(cluster_data, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index)
-#mebn.plot_clusters(variations_data, cluster_index, assumedpredictors, assumedtargets, largest_personal_effects, feature_index)
+cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
 
+mebn.plot_clusters(cluster_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index)
 ```
 In clusters 1 and 2 there are patients whose blood insulin levels react on lower and on higher than average. One interesting difference is lignin's effect to the blood insulin.
 
