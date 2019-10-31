@@ -1220,8 +1220,9 @@ mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout 
   
   # Color and size encoding for edges according to beta coefficient
   E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
+  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
   E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
-  #E(visual_graph)[E(visual_graph)$weight < 0]$lty="dashed"
+  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
   E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
 
   plot(visual_graph, 
@@ -1232,7 +1233,9 @@ mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout 
        vertex.label.dist=4,
        edge.arrow.size=0.5,
        edge.arrow.width=1,
-       axes=FALSE) 
+       axes=FALSE,
+       margin=0,
+       layout.par = par(mar=c(2,2,2,2)))
   
   axis(1, at = -1:1, labels=c("Nutrients", "Processes and organs", "Personal goals"))
   #axis(1, at = 1:4)
@@ -1298,7 +1301,9 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
   
   # Color and size encoding for edges according to beta + b coefficients
   E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
+  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
   E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
+  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
   E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
   
   plot(visual_graph, 
@@ -1309,7 +1314,9 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
        vertex.label.dist=4,
        edge.arrow.size=0.5,
        edge.arrow.width=1,
-       curved = 0)
+       curved = 0,
+       margin=0,
+       layout.par = par(mar=c(2,2,2,2)))       
   
   return(graph_layout)
 }
