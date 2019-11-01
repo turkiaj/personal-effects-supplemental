@@ -152,7 +152,9 @@ plot(initial_graph,
        vertex.label.cex=1,
        vertex.label.dist=4,
        edge.arrow.size=0.5,
-       edge.arrow.width=1)
+       edge.arrow.width=1,
+       margin=0,
+       layout.par = par(mar=c(2,2,2,2)))
 
 ```
 
@@ -177,7 +179,7 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We evaluate the model candidates fit by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
+We evaluate the fit of model candidates by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
 
 ```{r normal_model_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
@@ -212,7 +214,7 @@ mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 
 The visual PPC inspection shows that the Gamma distribution fit generally better to responses than Normal distribution, but cholesterol values are still systematically estimated too low (fsldl and fskol) or too high (fshdl).
 
-## Modeling corralated observations with an autocorrelation structure
+## Modeling correlated observations with an autocorrelation structure
 
 In the dataset the observations from patients' food diaries and blood tests have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated observations, we add an autocorrelation process to the model by adding an estimated portion of previous measurement to the linear predictor
 
@@ -429,14 +431,9 @@ fsins_normal_ar1 <- mebn.bipartite_model(reaction_graph = initial_graph,
                                    stan_model_file = "mebn/BLMM_normal_ar1.stan",
                                    normalize_values = TRUE)
 
-write.graph(fsins_normal_ar1, "graphs/fsins_normal_ar1.graphml", "graphml")
 ```
-```{r}
-fsins_normal_ar1 <- read_graph("graphs/fsins_normal_ar1.graphml", "graphml")
-graph_layout <- mebn.plot_typical_effects(fsins_normal_ar1, 20)
 
-```
-```{r}
+```{r graph_with_normal_ar1_rhs, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 # One RHS model with all data (no_holdout)
 holdout_index <- rep(0, nrow(sysdimet))
 ```
@@ -551,16 +548,7 @@ write.graph(sysdimet_expfam_ar1_rhs, "graphs/sysdimet_expfam_ar1_rhs.graphml", "
 
 Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. During the cross-validation we have estimated a separated model for each of the 106 patients with the data from other 105 patient. Prediction is then made for the left out patient.
 
-Following table summarizes the prediction accuracy with mean squared error metrics
-
-- Out-of-sample k-fold Gamma AR(1) RHS
-- Out-of-sample k-fold Expfam AR(1) RHS
-
-```{r cv_mse}
-
-```
-
-Summary of MSE comparison 
+Following table summarizes the prediction accuracy with mean squared error 
 
 ```{r model_mse2, echo=FALSE, message=FALSE, warning=FALSE}
 mse.mat <- readRDS(file="evaluations/MSE-matrix2.rds")
@@ -755,9 +743,9 @@ class_sum.mat <- readRDS(file="evaluations/Class-matrix1.rds")
 
 class_sum.mat[,1:5] <- paste0(class_sum.mat[,1:5], "%")
 
-kable(class_sum.mat) %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-  row_spec(0,bold=TRUE)
+#kable(class_sum.mat) %>%
+#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
 
 kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
   kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
@@ -773,7 +761,7 @@ We have now reached a reasonably good fit for the local distributions of the Bay
 
 Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. This visualization shows mean of posterior for typical coefficients $\beta$ as weight of the connection between blood test and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood test
 
-```{r, typical_effects_figure, fig.height = 6, fig.width = 7, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
+```{r, typical_effects_figure, fig.height = 6, fig.width = 7, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
 sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
@@ -1272,18 +1260,25 @@ unique(sysdimet[sysdimet$SUBJECT_ID == sprintf("S%02d", person_id1),]$effect_gro
 unique(sysdimet[sysdimet$SUBJECT_ID == sprintf("S%02d", person_id2),]$effect_group)
 ```
 
-```{r personal_graph1, echo=FALSE, eval=FALSE}
+```{r personal_graph1, echo=FALSE, eval=TRUE}
+source("mebn/MEBN.r")
+
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
-personal_graph1 <- mebn.personal_graph(person_id = person_id1, 
+
+expfam_ar1_dirs <- assumedtargets
+expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
+expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
+
+personal_graph1 <- mebn.personal_graph(person_id = 1, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
                                        assumed_targets = assumedtargets, 
-                                       local_model_cache = "BLMM_gamma/ar1_rhs/no_holdout")
+                                       local_distributions = expfam_ar1_dirs)
 
 write.graph(personal_graph1, "graphs/personal_graph1.graphml", "graphml")
 ```
 
-```{r personal_graph2, echo=FALSE, eval=FALSE}
+```{r personal_graph2, echo=FALSE, eval=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 personal_graph2 <- mebn.personal_graph(person_id = person_id2, 
                                        reaction_graph = initial_graph, 

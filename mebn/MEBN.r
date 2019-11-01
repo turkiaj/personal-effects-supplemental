@@ -1119,7 +1119,7 @@ mebn.bipartite_expfam_bn <- function(reaction_graph, predictor_columns, assumed_
 
 ##################################################
 
-mebn.personal_graph <- function(person_id, reaction_graph, predictor_columns, assumed_targets, local_model_cache)
+mebn.personal_graph <- function(person_id, reaction_graph, predictor_columns, assumed_targets, local_distributions)
 {
   library(igraph)
   library(rstan)
@@ -1129,7 +1129,9 @@ mebn.personal_graph <- function(person_id, reaction_graph, predictor_columns, as
     target_column <- assumed_targets[c,]
     target_name <- as.vector(target_column$Name)
     
-    localfit <- mebn.get_localfit(paste0(local_model_cache, target_name))
+    localfit_directory <- local_distributions[local_distributions$Name==target_name,]$modelcache
+    
+    localfit <- mebn.get_localfit(target_name, localfit_directory)
 
     # extract personal effects from the local distribution
     pe <- mebn.personal_effects(localfit, person_id)
@@ -1219,11 +1221,17 @@ mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout 
   V(visual_graph)[V(visual_graph)$type == "200"]$label.degree = 0 # right side
   
   # Color and size encoding for edges according to beta coefficient
-  E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
-  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
-  E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
-  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
-  E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
+  #E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
+  #E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
+  #E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
+  #E(visual_graph)[E(visual_graph)$weight < 0]$lty=1
+
+  # Black and white
+  
+  E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
+  E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
+
+    E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
 
   plot(visual_graph, 
        layout=graph_layout, 
@@ -1300,10 +1308,10 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
   V(visual_graph)[V(visual_graph)$type == "200"]$label.degree = 0 # right side
   
   # Color and size encoding for edges according to beta + b coefficients
-  E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
-  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
-  E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
-  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
+  E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
+#  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
+  E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
+#  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
   E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
   
   plot(visual_graph, 
