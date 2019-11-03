@@ -20,6 +20,14 @@ mebn.markov_blanket <- function(g, target)
 
 ##################################################
 
+# Normalized root mean squared error
+mebn.NRMSE <- function(pred_value, true_value, mean_value)
+{
+  sqrt((pred_value-true_value)^2)/mean_value
+}  
+  
+##################################################
+
 mebn.new_graph_with_randomvariables <- function(datadesc)
 {
   library(igraph)  
@@ -1238,14 +1246,14 @@ mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout 
        rescale=TRUE,
        vertex.label.color="black",
        vertex.label.cex=0.7,
-       vertex.label.dist=4,
+       vertex.label.dist=3.8,
        edge.arrow.size=0.5,
        edge.arrow.width=1,
        axes=FALSE,
        margin=0,
-       layout.par = par(mar=c(2,2,2,2)))
-  
-  axis(1, at = -1:1, labels=c("Nutrients", "Processes and organs", "Personal goals"))
+       layout.par = par(mar=c(2.0,0,0,0)))
+
+  axis(1, at = -1:1, labels=c("Nutrients", "Processes and organs", "Personal goals"), cex.axis=0.7)
   #axis(1, at = 1:4)
   
   return(graph_layout)
@@ -1318,13 +1326,13 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
        layout=graph_layout, 
        rescale=TRUE,
        vertex.label.color="black",
-       vertex.label.cex=0.7,
-       vertex.label.dist=4,
+       vertex.label.cex=0.6,
+       vertex.label.dist=3.5,
        edge.arrow.size=0.5,
        edge.arrow.width=1,
        curved = 0,
        margin=0,
-       layout.par = par(mar=c(2,2,2,2)))       
+       layout.par = par(mar=c(1,0,0,0)))       
   
   return(graph_layout)
 }
@@ -1371,16 +1379,19 @@ mebn.plot_personal_variations <- function(reaction_graph, top_effects)
   
   # Color and size encoding for edges according to beta coefficient
   E(visual_graph)$color="gray"
-  E(visual_graph)$width = abs(E(visual_graph)$b_sigma) * 6
+  E(visual_graph)$width = abs(E(visual_graph)$b_sigma) * 4
   
   plot(visual_graph, 
        layout=bipa_layout, 
        rescale=TRUE,
        vertex.label.color="black",
-       vertex.label.cex=1,
-       vertex.label.dist=4,
+       vertex.label.cex=0.7,
+       vertex.label.dist=3.8,
        edge.arrow.size=0.5,
-       edge.arrow.width=1)
+       edge.arrow.width=1,
+       axes=FALSE,
+       margin=0,
+       layout.par = par(mar=c(0,0,0,0)))
 }
 
 ##################################################
@@ -1447,15 +1458,17 @@ mebn.plot_clusters <- function(cluster_data, cluster_spread, clusters_index, ass
       geom_bar(stat='identity', aes(fill=below_above), width=.5, show.legend = FALSE) +
       scale_fill_manual(values = c("#333333", "#999999")) +
       coord_flip() +
-      theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) +
-      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels))
+      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels)) +
+      theme_bw() +
+      theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) 
   } else {  
     ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
       geom_bar(stat='identity', aes(fill=below_above), width=.5, show.legend = FALSE) +
       scale_fill_manual(values = c("#333333", "#999999")) +
       coord_flip() +
-      theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) +
-      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels))
+      facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels)) +
+      theme_bw() +
+      theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) 
   }  
 }
 

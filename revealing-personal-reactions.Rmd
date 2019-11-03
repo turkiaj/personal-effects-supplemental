@@ -1,5 +1,5 @@
 ---
-title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
+title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network Supplementary Materials"
 author:
 - Jari Turkia, jari.turkia@cgi.com
 - University of Eastern Finland
@@ -7,7 +7,7 @@ bibliography: biblio.bib
 output:
   pdf_document: default
   html_document: default
-abstract: This notebook is a supplemential material for the article. The notebook shows in detail how mixed-effect Bayesian network can be used to model the effects of nutrition. The hierarchical structure of the graphical model allows us to study the effects in both typical and personal levels. In addition we show that personal effect variations form clusters of similarly behaving patients. Finally, we show how personal graphical models can be predicted for patients that are held out from the model estimation. This shows that personal differences in nutrional effects do exist, and that they can be detected from repeated observations of food diaries and blood tests.
+abstract: This notebook is a supplementary material for the article "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. Comparison of  The hierarchical structure of the graphical model allows us to study the effects in both typical and personal levels. In addition we show that personal effect variations form clusters of similarly behaving patients. Finally, we show how personal graphical models can be predicted for patients that are held out from the model estimation. This shows that personal differences in nutrional effects do exist, and that they can be detected from repeated observations of food diaries and blood tests.
 ---
 
 ```{r setup, include=FALSE}
@@ -49,10 +49,9 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
+Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are shown at the plot here for clarity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
 
-Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are plot here for brevity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
-
-```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=8, fig.width=6, message=FALSE}
+```{r spagettiplot_fshdl, echo=FALSE, fig.align="left", fig.height=1.5, fig.width=5, message=FALSE}
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -63,27 +62,33 @@ plot_patients <- levels(sysdimet$SUBJECT_ID)[plot_patients_index]
 sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 
 hdlplot <- ggplot() +
-  geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=1, show.legend = FALSE) +
+  geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
+hdlplot
+```
+
+
+```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=7, fig.width=6, message=FALSE}
+
 ldlplot <- ggplot() +
-  geom_line(data=sysdimet_every_10th, aes(y = fsldl, x=WEEK, color=SUBJECT_ID), size=1, show.legend = FALSE) +
+  geom_line(data=sysdimet_every_10th, aes(y = fsldl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "LDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 insplot <- ggplot() +
-  geom_line(data=sysdimet_every_10th, aes(y = fsins, x=WEEK, color=SUBJECT_ID), size=1, show.legend = FALSE) +
+  geom_line(data=sysdimet_every_10th, aes(y = fsins, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "Insulin (mmol/l)") + theme(axis.title.x = element_blank())
 
 kolplot <- ggplot() +
-  geom_line(data=sysdimet_every_10th, aes(y = fskol, x=WEEK, color=SUBJECT_ID), size=1, show.legend = FALSE) +
+  geom_line(data=sysdimet_every_10th, aes(y = fskol, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "Total chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 glukplot <- ggplot() +
-  geom_line(data=sysdimet_every_10th, aes(y = fpgluk, x=WEEK, color=SUBJECT_ID), size=1, show.legend = FALSE) +
+  geom_line(data=sysdimet_every_10th, aes(y = fpgluk, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "Glucose (mmol/l)") 
 
@@ -91,11 +96,11 @@ grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, pad
 
 ```
 
-When the future direction of the blood test levels can be predicted, the typical and personal importance of nutrients contributing this change be estimated from model parameters. 
+When the future direction of the blood test levels can be predicted, the typical and personal importance of nutrients contributing this change be estimated from the model parameters. 
 
 # Mixed-effect Bayesian network
 
-We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model can be found at the main article section 3.
+We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of the effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model theory can be found at the main article.
 
 Let us denote the graph of interconnected nutrients and responses with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
 
@@ -128,9 +133,7 @@ The joint probability distribution of the graph is factorized into separate dist
 \end{split}
 \end{align}
 
-Note that while this formulation generalizes to graphs with multiple levels, we have a prior assumption, $P(G)$, that the structure of our dataset is a bipartite graph 
-
-```{r graph, fig.height = 8, fig.width = 10, fig.align = "center", echo=FALSE, message=FALSE}
+```{r graph, fig.height = 5, fig.align = "left", echo=FALSE, message=FALSE}
 library(igraph)
 initial_graph <- mebn.fully_connected_bipartite_graph(datadesc)
 
@@ -147,18 +150,18 @@ V(initial_graph)[V(initial_graph)$type == "200"]$label.degree = 0 # right side
 plot(initial_graph,
        layout=bipa_layout, 
        rescale=TRUE,
-       vertex.label.family="Helvetica",
        vertex.label.color="black",
-       vertex.label.cex=1,
-       vertex.label.dist=4,
+       vertex.label.cex=0.7,
+       vertex.label.dist=3.8,
        edge.arrow.size=0.5,
        edge.arrow.width=1,
+       axes=FALSE,
        margin=0,
-       layout.par = par(mar=c(2,2,2,2)))
+       layout.par = par(mar=c(0,0,0,0)))
 
 ```
 
-We assume a connection from every nutrient and personal information to every blood test value at the dataset. The model search is then focused on to estimating optimal coefficients $\beta$ and $b$ that we use to define the strength of the connection. It is also important to find correct probability distributions for the random variables.
+We assume a connection from every nutrient and personal information to every blood test value at the dataset. The model search is then focused on to estimating optimal coefficients describing the connections. 
 
 # Model development
 
@@ -179,7 +182,7 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We evaluate the fit of model candidates by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the Gaussian random variables are not fitting well. Gaussian distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Gaussian distribution is also symmetric while the distributions of blood test values are more skewed to right. 
+We evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the normally distributed random variables are not fitting well. Normal distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood test values are more skewed to right. 
 
 ```{r normal_model_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
@@ -307,117 +310,124 @@ write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml"
 mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
 ```
 
-Visual comparison with posterior predictive checks seem to favor this model. Let us confirm with numerical metrics.
+Visual comparison with posterior predictive checks seem to favor this model. Let us confirm the evaluation with numerical metrics.
 
-# Evaluation of the models' fit and predictive performance 
+# Evaluation of the models' fit and predictive performance
+
+Diffent model versions are compared with a normalized root mean squared error (NRMSE) and also with a classification test that shows better the usefulness of the method. The classification test allows also comparison with other classification methods.
 
 ## Comparison with in-sample data
 
-Following compares different model candidates posterior predictive distributions with their true values using mean squared error (MSE) metrics
+Following compares different model candidates posterior predictive distributions with their true values using normalized root mean squared error (NRMSE) metrics. It allows comparing the prediction accuracy of responses with different scales.
 
-```{r MSE comparison, eval=FALSE, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r NRMSE comparison, eval=FALSE, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
 
-allrep_normal <- get_rep_response_for_all("BLMM_normal/")
-allrep_gamma <- get_rep_response_for_all("BLMM_gamma/")
-allrep_rhs <- get_rep_response_for_all("BLMM_gamma/ar1_rhs/no_holdout/")
-allrep_norhs <- get_rep_response_for_all("BLMM_gamma/ar1/")
+allrep_normal <- get_rep_response_for_all("models/BLMM_normal/")
+allrep_gamma <- get_rep_response_for_all("models/BLMM_gamma/")
+allrep_rhs <- get_rep_response_for_all("models/BLMM_gamma/ar1_rhs/no_holdout/")
+allrep_norhs <- get_rep_response_for_all("models/BLMM_gamma/ar1/")
 
 # Normal distribution model
-mse.mat <- matrix(0, nrow=0,ncol=7)
+nrmse.mat <- matrix(0, nrow=0,ncol=7)
 amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_normal, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- sqrt((rep_response - true_response)^2)
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("Normal", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("Normal", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
 # Gamma distribution model without autocorrelation
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_gamma, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- (rep_response - true_response)^2
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("Gamma", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("Gamma", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
 # Gamma model with AR(1) structure
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_norhs, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- (rep_response - true_response)^2
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("Gamma AR(1)", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1)", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
 # Gamma model with AR(1) structure and RHS prior on betas
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_rhs, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- (rep_response - true_response)^2
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("Gamma AR(1) RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1) RHS", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
-colnames(mse.mat)[1] <- "model"
-colnames(mse.mat)[7] <- "MSE"
+colnames(nrmse.mat)[1] <- "model"
+colnames(nrmse.mat)[7] <- "mean"
 
-saveRDS(mse.mat, "evaluations/MSE-matrix1.rds")
-
+saveRDS(nrmse.mat, "evaluations/NRMSE-matrix1.rds")
 ```
 
-```{r model_mse1, echo=FALSE, message=FALSE, warning=FALSE}
-mse.mat <- readRDS(file="evaluations/MSE-matrix1.rds")
+```{r model_nrmse1, echo=FALSE, message=FALSE, warning=FALSE}
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix1.rds")
 
-#kable(mse.mat) %>%
+#kable(nrmse.mat) %>%
 #  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
 
-kable(mse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+kable(nrmse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
   kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
   row_spec(0,bold=TRUE)
 
 ```
 
-It shows that Gamma distribution with AR(1) autocorralation structure fits to data best. Horseshoe prior on betas has shrinked some coefficients close to zero and it has increased overall MSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
-
-We can fit local distribution for fsins separately by defining a Bayesian network with just this one response node. We fit both non-shrinked and regularized horseshoe-shrinked versions of Normal AR(1) model.
+It shows that Gamma distribution with AR(1) autocorralation structure fits best to data. Horseshoe prior on typical effects has shrinked some coefficients close to zero and it has increased mean NRMSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
 
 ```{r graph_with_normal_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
+
+# We can fit local distribution for fsins separately by defining a Bayesian network with just this one response node. 
+# In following chunks, we fit both non-shrinked and regularized horseshoe-shrinked versions of Normal AR(1) model.
+
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
 
@@ -454,6 +464,9 @@ fsins_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph,
                                    normalize_values = TRUE)
 
 ``` 
+
+Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error
+
 ```{r fsins_comparison, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 library(gridExtra)
 
@@ -463,8 +476,6 @@ normal_plot <- mebn.target_dens_overlays("BLMM_normal/ar1_rhs/no_holdout/", only
 
 grid.arrange(gamma_plot, normal_plot,  nrow = 1, widths=c(2,2), padding=0)
 ```
-
-Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better according to MSE metrics.
 
 Next, we contruct a EXPFAM AR(1) model that has this normally distributed fsins-response and otherwise Gamma distributed blood test responses.
 
@@ -479,133 +490,131 @@ expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
 
-```{r mse_expfam, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r nrmse_expfam, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
 amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-mse.mat <- readRDS(file="evaluations/MSE-matrix1.rds")
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix1.rds")
 
 ## EXPFAM AR(1)
 
 allrep_expfam_ar1 <- get_rep_response_for_expfam(expfam_ar1_dirs)
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_expfam_ar1, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- (rep_response - true_response)^2
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("EXPFAM AR(1)", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("EXPFAM AR(1)", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
 ## EXPFAM AR(1) RHS
 
 allrep_expfam_ar1_rhs <- get_rep_response_for_expfam(expfam_ar1_rhs_dirs)
 
-personal_mse <- matrix(0, nrow=0,ncol=5)
+personal_nrmse <- matrix(0, nrow=0,ncol=5)
 for (subject_number in 1:amount_subjects)
 {
   rep_response <- get_rep_response(allrep_expfam_ar1_rhs, subject_number)
   true_response <- get_true_response(subject_number)
   
-  mse_rows <- (rep_response - true_response)^2
-  mse <- rowMeans(mse_rows)
+  #nrmse_rows <- (rep_response - true_response)^2
+  nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+  nrmse <- rowMeans(nrmse_rows)
   
-  personal_mse <- rbind(personal_mse, mse)
+  personal_nrmse <- rbind(personal_nrmse, nrmse)
 }
 
-model_mse <- mean(colMeans(personal_mse))
-mse.mat <- rbind(mse.mat, c("EXPFAM AR(1) RHS", round(colMeans(personal_mse), 2), round(model_mse, 2)))
+model_nrmse <- mean(colMeans(personal_nrmse))
+nrmse.mat <- rbind(nrmse.mat, c("EXPFAM AR(1) RHS", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
 
-saveRDS(mse.mat, "evaluations/MSE-matrix2.rds")
+saveRDS(nrmse.mat, "evaluations/NRMSE-matrix2.rds")
 ```
 
 
-```{r expfam_ar1_model, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
-source("mebn/MEBN.r")
-
+```{r expfam_ar1_model, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 sysdimet_expfam_ar1 <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, expfam_ar1_dirs)
 
 write.graph(sysdimet_expfam_ar1, "graphs/sysdimet_expfam_ar1.graphml", "graphml")
 ```
-```{r expfam_ar1_rhs_model}
-source("mebn/MEBN.r")
 
+```{r expfam_ar1_rhs_model, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 sysdimet_expfam_ar1_rhs <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, expfam_ar1_rhs_dirs)
 
 write.graph(sysdimet_expfam_ar1_rhs, "graphs/sysdimet_expfam_ar1_rhs.graphml", "graphml")
 ```
 
-
-## Out-of-sample MSE prediction accuracy
+## Predictive accuracy cross-validated MEBN 
 
 Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. During the cross-validation we have estimated a separated model for each of the 106 patients with the data from other 105 patient. Prediction is then made for the left out patient.
 
+```{r model_mse3}
+# Add CV to MSE table
+```
+
+
 Following table summarizes the prediction accuracy with mean squared error 
 
-```{r model_mse2, echo=FALSE, message=FALSE, warning=FALSE}
-mse.mat <- readRDS(file="evaluations/MSE-matrix2.rds")
+```{r model_nrmse2, echo=FALSE, message=FALSE, warning=FALSE}
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
 
-kable(mse.mat) %>%
+kable(nrmse.mat) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
   row_spec(0,bold=TRUE)
 
-#kable(mse.mat, "latex", booktabs = T, caption = "") %>%
+#kable(nrmse.mat, "latex", booktabs = T, caption = "") %>%
 #  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
 
 ```
 
-```{r mse_plot, fig.height = 3, fig.width = 7, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
+```{r nrmse_plot_vertical, fig.height = 3, fig.width = 5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
 library(ggplot2)
 
-mse.mat <- readRDS(file="evaluations/MSE-matrix2.rds")
-mse.df <- data.frame(mse.mat[,1])
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
+nrmse.df <- data.frame(nrmse.mat[,1])
 
-# model is a string factors, MSEs are doubles
-mse.df$model <- factor(mse.mat[,1], levels = c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS"))
-mse.df <- cbind(mse.df, apply(mse.mat[,2:7], 2, as.numeric))[,2:8]
+# model is a string factors, NRMSEs are doubles
+nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS")))
+nrmse.df <- cbind(nrmse.df, apply(nrmse.mat[,2:7], 2, as.numeric))[,2:8]
 
-label.df <- as.data.frame(paste0(colnames(mse.mat)[2:7], " ", sprintf(as.numeric(mse.mat[6,2:7]), fmt = '%#.2f')))
-label.df <- cbind(label.df, as.numeric(mse.mat[6,2:7]))
+#label.df <- as.data.frame(paste0(colnames(nrmse.mat)[2:7], " ", sprintf(as.numeric(nrmse.mat[6,2:7]), fmt = '%#.3f')))
+#label.df <- as.data.frame(colnames(nrmse.mat)[2:7])
+label.df <- as.data.frame(c("cholesterol","","fsins","","fpgluk","mean"))
+label.df <- cbind(label.df, as.numeric(nrmse.mat[6,2:7]))
 colnames(label.df) <- c("label", "value")
 
-mseplot <- ggplot(mse.df, show.legend = FALSE) +
+ggplot(nrmse.df, show.legend = FALSE) +
   geom_line(aes(y = fshdl, x = model, group=1), size=0.3) +
   geom_line(aes(y = fsldl, x = model, group=1), size=0.3) +
   geom_line(aes(y = fsins, x = model, group=1), size=0.3) +
   geom_line(aes(y = fskol, x = model, group=1), size=0.3) +
   geom_line(aes(y = fpgluk, x = model, group=1), size=0.3) +
-  geom_line(aes(y = MSE, x = model, group=1), size=1) +
-  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS", y = value, hjust = -.03, vjust = (label == "fpgluk 0.05")*1.2), size = 3) +
-  scale_y_continuous(trans='log10') +
-  labs(x = "Model", y = "Mean squared error (MSE)") + 
+  geom_line(aes(y = mean, x = model, group=1), size=1) +
+  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS", y = value, hjust = .2, vjust = (label == "fpgluk")*1.2+1.2), size = 3) +
+  scale_y_continuous() +
+  labs(x = "", y = "NRMSE") + 
+  coord_flip() +
   theme_bw() +
   theme(axis.text.x=element_text(size=rel(0.9)), plot.margin = margin(0,3,0,0)) 
-
-mseplot
 
 ```
 
 
 # Evaluation with classification metrics
 
-Mean squared error is good for comparing model candidates, but does not say much about the actual usefulness of the model. For this reason, a custom test metrics is used to evaluate if given diet affects the future blood test values. Will the values raise or lower towards their personal optimum?
+Normalized root mean squared error (NRMSE) is good for comparing model candidates, but it does not say much about the actual usefulness of the model. For personal nutrition guiding, it is important to predict how given diet will affect the future blood test values. In the standard NRMSE comparison, the error between true and predicted values were compared, but a custom classification test can be also used. It tells if the given diet raises or lowers the future blood test values compared to past measurement. 
 
-With this classification test we compare following models:
-
-- MEBN Gamma AR(1) RHS
-- MEBN Expfam AR(1) RHS
-- XGBoost decision tree
-
-MEBN model is compared with XGBoost machine learning model. XGBoost is a decision tree method that has proven to be effective.
+Classification test allows also to compare MEBN with other classification methods. XGBoost is a well-performing decision tree method. It is a non-parametric machine learning method that learns personal reactions only by example. Following compares the cross-validated predictive accuracy of XGBoost with MEBN predictions (MEBN CV) that uses EXPFAM AR(1) RHS-model. Also in-sample MEBN fit with non-shrinked EXPFAM AR(1) is given for comparison. This best predicting model is used for dataset analysis at rest of this notebook.      
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 source("model_eval_functions.r")
@@ -688,7 +697,7 @@ summary.mat
 
 This table summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
 
-```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=7, message=FALSE}
+```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE}
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -761,7 +770,7 @@ We have now reached a reasonably good fit for the local distributions of the Bay
 
 Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. This visualization shows mean of posterior for typical coefficients $\beta$ as weight of the connection between blood test and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood test
 
-```{r, typical_effects_figure, fig.height = 6, fig.width = 7, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
+```{r, typical_effects_figure, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
 sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
@@ -858,7 +867,7 @@ ordered_typical_effects_rhs$nonrhs_variance <- ordered_typical_effects$variance
 
 We can examine closer the effects in the previous graph. In following, we show 90% credible interval for each effect and sort them by variance between persons. These effects with high variance between persons are intresting to us.
 
-```{r high_varying_effects,  fig.height = 6, fig.width = 8, fig.align="left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r high_varying_effects,  fig.height = 5, fig.width = 6.5, fig.align="left", echo=FALSE, message=FALSE, warning=FALSE}
 
 library(ggplot2)
 library(gridExtra)
@@ -921,7 +930,8 @@ grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
 
 These are the effect with most difference between patients. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
 
-```{r personal_variations_figure, fig.height = 8, fig.width = 10, fig.align = "center", cache = FALSE}
+```{r personal_variations_figure, fig.height = 5, fig.align = "left", cache = FALSE}
+source("mebn/MEBN.r")
 effects_with_most_variance <- ordered_typical_effects[ordered_typical_effects$variance >= 0.30,]
 effects_with_most_variance$effect <- effects_with_most_variance$effect_text
 number_of_varying_effects <- nrow(effects_with_most_variance)
@@ -985,7 +995,7 @@ for (i in c(1:nrow(assumedtargets)))
 
 ```
 
-```{r, echo=FALSE, eval=TRUE}
+```{r, echo=FALSE, eval=TRUE, fig.height=3}
 library(stats)
 library(gridExtra)
 
@@ -1020,7 +1030,7 @@ By looking previous diagram we see that there are four clearly identifiable grou
 
 At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and bars denote a deviation from this typical mean.
 
-```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=7, fig.height=7, cache=TRUE}
+```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1044,7 +1054,7 @@ Cholesterol medication seems to dominate the clusters. There are patients for wh
 
 Let's see how the clustering shows with absolute effects rather than difference from mean. Note that these are not the greatest effects, but those with most personal variance.
 
-```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=6, fig.height=7, cache=TRUE}
+```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1153,7 +1163,7 @@ for (i in c(1:nrow(assumedtargets)))
 }
 ```
 
-```{r, echo=FALSE, eval=FALSE, cache=FALSE}
+```{r, echo=FALSE, eval=FALSE, cache=FALSE, fig.height=3}
 # Number of clusters with nutritional effects only
 
 library(stats)
@@ -1184,7 +1194,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-```{r variation clusters3, echo=FALSE, eval=TRUE, fig.width=6, fig.height=7, cache=TRUE}
+```{r variation clusters3, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
 source("mebn/MEBN.r")
 # Number of cluster centers 
 k <- 4
@@ -1205,7 +1215,7 @@ mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredic
 ```
 
 
-```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=6, fig.height=7, cache=TRUE}
+```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
 
 # Number of cluster centers 
 k <- 4
@@ -1227,37 +1237,32 @@ cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
 
 mebn.plot_clusters(cluster_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index)
 ```
-In clusters 1 and 2 there are patients whose blood insulin levels react on lower and on higher than average. One interesting difference is lignin's effect to the blood insulin.
+In clusters 1 and 2 there are patients whose blood insulin levels react on lower and on higher than average.
 
 # Personally predicted reaction types
 
 During the cross-validation we estimated personal models for each patient. Next we illustrate the differences within personal reaction types by picking few most distant ones. 
 
-
-```{r personal_effects_holdout, echo=FALSE, eval=FALSE, message=FALSE}
-# Find persons with most different lignin->fsins effect
+```{r safa_differences, echo=FALSE, eval=TRUE, message=FALSE}
 p <- nrow(assumedpredictors)
 ins_idx <- match("fsins", assumedtargets$Name)
-lignin_idx <- match("ligniini", assumedpredictors$Name)
+safa_idx <- match("safa", assumedpredictors$Name)
 
-ligning_fsins_idx <- p*(ins_idx-1) + lignin_idx
+safa_fsins_idx <- p*(ins_idx-1) + safa_idx
 
-# ligning -> fsins for every patient
-ligning_fsins <- as.data.frame(cbind(personal_effects[, ligning_fsins_idx], seq(1, nrow(personal_effects))))
-colnames(ligning_fsins) <- c("effect", "subject_id")
+# safa -> fsins for every patient
+safa_fsins <- as.data.frame(cbind(personal_effects[, safa_fsins_idx], seq(1, nrow(personal_effects))))
+colnames(safa_fsins) <- c("effect", "subject_number")
 
-ordered_ligning_fsins <- ligning_fsins[order(-ligning_fsins$effect),]
+ordered_safa_fsins <- safa_fsins[order(-safa_fsins$effect),]
 
-person_id1 <- head(ordered_ligning_fsins$subject_id,1)
-person_id2 <- tail(ordered_ligning_fsins$subject_id,1)
+person_id1 <- head(ordered_safa_fsins$subject_number,1)
+person_id2 <- tail(ordered_safa_fsins$subject_number,1)
 
-```
+#What reaction clusters these patients belong?
+#sysdimet[person_id1,]$effect_group   # patient 1 -> cluster 3
+#sysdimet[person_id2,]$effect_group   # patient 86 -> cluster 2
 
-What reaction clusters these patients belong?
-
-```{r, eval=FALSE, echo=FALSE}
-unique(sysdimet[sysdimet$SUBJECT_ID == sprintf("S%02d", person_id1),]$effect_group)
-unique(sysdimet[sysdimet$SUBJECT_ID == sprintf("S%02d", person_id2),]$effect_group)
 ```
 
 ```{r personal_graph1, echo=FALSE, eval=TRUE}
@@ -1269,82 +1274,51 @@ expfam_ar1_dirs <- assumedtargets
 expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-personal_graph1 <- mebn.personal_graph(person_id = 1, 
+# patient 1 -> cluster 3
+personal_graph1 <- mebn.personal_graph(person_id = person_id1, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
                                        assumed_targets = assumedtargets, 
                                        local_distributions = expfam_ar1_dirs)
 
-write.graph(personal_graph1, "graphs/personal_graph1.graphml", "graphml")
+write.graph(personal_graph1, "graphs/personal_insample_graph_1.graphml", "graphml")
 ```
 
 ```{r personal_graph2, echo=FALSE, eval=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+
+expfam_ar1_dirs <- assumedtargets
+expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
+expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
+
+# patient 86 -> cluster 2
 personal_graph2 <- mebn.personal_graph(person_id = person_id2, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
                                        assumed_targets = assumedtargets, 
-                                       local_model_cache = "BLMM_gamma/ar1_rhs/no_holdout")
+                                       local_distributions = expfam_ar1_dirs)
 
-write.graph(personal_graph2, "graphs/personal_graph2.graphml", "graphml")
+write.graph(personal_graph2, "graphs/personal_insample_graph_86.graphml", "graphml")
 ```
 
 We can then compare the visualizations of the personal reaction graphs. The effect of cholesterol medication is most significant difference, but other differences exist as well.
 
-**Subject 94**
+**Subject 1**
 
-```{r personal_graphvisu1, eval=TRUE, fig.height = 6, fig.width = 7, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r personal_graphvisu1, eval=TRUE, fig.height = 4, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
-personal_graph1 <- read.graph("graphs/personal_graph1.graphml", "graphml")
-layout <- mebn.plot_personal_effects(personal_graph1, 20, graph_layout)
+personal_graph1 <- read.graph("graphs/personal_insample_graph_1.graphml", "graphml")
+layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout)
 ```
 
-**Subject 37**
+**Subject 86**
 
-```{r personal_graphvisu2, eval=TRUE, fig.height = 6, fig.width = 7, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r personal_graphvisu2, eval=TRUE, fig.height = 4, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
-personal_graph2 <- read.graph("graphs/personal_graph2.graphml", "graphml")
-layout <- mebn.plot_personal_effects(personal_graph2, 20, graph_layout)
-```
-
-The graph visualizations show only the means of the effect magnitudes. We can also go deeper and inspect the posterior predictive distributions of the effects. Here are the effects of cholesterol medication and lignin to the blood insulin. The outline of the plot shows 95% credible interval and the dark band shows 50% credible interval. 
-
-```{r, echo=FALSE, eval=FALSE, cache=FALSE, fig.height=4}
-source("mebn/MEBN.r")
-library(bayesplot)
-color_scheme_set("purple")
-
-lignin_id <- match("ligniini", datadesc$Name)
-
-fsins_blmm <- mebn.get_localfit("BLMM_gamma/ar1_rhs/no_holdout/fsins")
-posterior <- as.array(fsins_blmm)
-
-lignin_plot1 <- mcmc_areas(posterior, pars = paste0("personal_effect[",person_id1,",",lignin_id,"]"), prob = 0.50, prob_outer = 0.95, point_est = "mean") + ggtitle(paste0("lignin -> fsins, subject ", person_id1)) + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-
-lignin_plot2 <- mcmc_areas(posterior, pars = paste0("personal_effect[",person_id2,",",lignin_id,"]"), prob = 0.50, prob_outer = 0.95, point_est = "mean") + ggtitle(paste0("lignin -> fsins, subject ", person_id2)) + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-
-bayesplot_grid(plots = list(lignin_plot1, lignin_plot2), legends = FALSE)
-
-```
-
-```{r, echo=FALSE, eval=FALSE, cache=FALSE, fig.height=4}
-source("mebn/MEBN.r")
-library(bayesplot)
-color_scheme_set("purple")
-
-cholmed_id <- match("kolestrolilaakitys", datadesc$Name)
-
-fsins_blmm <- mebn.get_localfit("BLMM_gamma/ar1_rhs/no_holdout/fsins")
-posterior <- as.array(fsins_blmm)
-
-cholmed_plot1 <- mcmc_areas(posterior, pars = paste0("personal_effect[",person_id1,",",cholmed_id,"]"), prob = 0.50, prob_outer = 0.95, point_est = "mean") + ggtitle(paste0("chol.med. -> fsins, subject ", person_id1)) + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-
-cholmed_plot2 <- mcmc_areas(posterior, pars = paste0("personal_effect[",person_id2,",",cholmed_id,"]"), prob = 0.50, prob_outer = 0.95, point_est = "mean") + ggtitle(paste0("chol.med. -> fsins, subject ", person_id2)) + theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
-
-bayesplot_grid(plots = list(cholmed_plot1, cholmed_plot2), legends = FALSE)
-
+personal_graph2 <- read.graph("graphs/personal_insample_graph_86.graphml", "graphml")
+layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout)
 ```
 
 
