@@ -178,8 +178,8 @@ for (target in assumedtargets$Name)
             max_delta_step = sample(1:10, 1)
             )
       
-      cv.nround = 10000
-      cv.nfold = 20
+      cv.nround = 1000
+      cv.nfold = 10
       
       seed.number = sample.int(10000, 1)[[1]]
       set.seed(seed.number)
@@ -219,7 +219,6 @@ for (target in assumedtargets$Name)
 {
   model_input <- diet_input[input_cols[[target]]]
   
-  train.index = sample(n,floor(0.80*n))
   train.data = as.matrix(model_input[train.index,])
   train.label = as.matrix(diet_target[train.index,][target])
   

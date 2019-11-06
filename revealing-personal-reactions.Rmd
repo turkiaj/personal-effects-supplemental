@@ -724,7 +724,7 @@ colnames(mebn_cv.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_cv.df)
 
 # Add XGBoost for comparison
-xgboost.mat <- readRDS("evaluations/xgboost-mat.rds")
+xgboost.mat <- readRDS("evaluations/xgboost-cv-mat.rds")
 xgboost.df <- as.data.frame(round(as.numeric(xgboost.mat[,2])*100, 0))
 xgboost.df$method <- "XGBoost"
 colnames(xgboost.df) <- c("accuracy","method")
