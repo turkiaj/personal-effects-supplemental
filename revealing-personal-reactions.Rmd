@@ -64,7 +64,9 @@ sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
-  labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
+  labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank()) +
+  scale_colour_grey() +
+  theme_bw()
 
 hdlplot
 ```
@@ -467,7 +469,7 @@ fsins_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph,
 
 Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error
 
-```{r fsins_comparison, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r fsins_comparison, fig.width=6, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 library(gridExtra)
 
 only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
@@ -752,13 +754,13 @@ class_sum.mat <- readRDS(file="evaluations/Class-matrix1.rds")
 
 class_sum.mat[,1:5] <- paste0(class_sum.mat[,1:5], "%")
 
-#kable(class_sum.mat) %>%
-#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-#  row_spec(0,bold=TRUE)
+kable(class_sum.mat) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
 
-kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
-  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
- row_spec(0,bold=TRUE)
+#kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+# row_spec(0,bold=TRUE)
 
 ```
 
@@ -888,6 +890,7 @@ p1 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=strength)) +
                  position=position_dodge(.9)) +
   scale_x_discrete(limits=ordered_typical_effects$effect_text) +
   scale_fill_manual(values = c("#DDDDDD", "#888888")) +
+  theme_bw() +
   theme(axis.title.y=element_blank(), 
         axis.text.y=element_text(size=9),
         axis.title.x=element_text(size=9)) +
@@ -903,6 +906,7 @@ p2 <- ggplot(ordered_typical_effects_rhs, aes(x=effect_text, y=strength)) +
                  position=position_dodge(.9)) +
   scale_x_discrete(limits=ordered_typical_effects_rhs$effect_text) +
   scale_fill_manual(values = c("#DDDDDD", "#888888")) +
+  theme_bw() +
   theme(axis.title.y=element_blank(), 
         axis.text.y=element_blank(),
         axis.title.x=element_text(size=9)) +
@@ -917,6 +921,7 @@ p3 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=variance)) +
   geom_errorbar(aes(ymin=variance_lCI, ymax=variance_uCI), width=.2,
                  position=position_dodge(.9)) +
   scale_x_discrete(limits=ordered_typical_effects$effect_text) +
+  theme_bw() +
   theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),

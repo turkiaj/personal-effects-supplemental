@@ -23,7 +23,6 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 ```
 
-
 ```{r data_loading, echo=FALSE, message=FALSE}
 
 # Read the data description
@@ -36,6 +35,8 @@ sysdimet <- read.csv(file="data/SYSDIMET_diet.csv", sep=";", dec=",")
 assumedpredictors <- datadesc[datadesc$Order==100,]    
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
+
+## Prediction of future blood test values with XGBoost
 
 For XGBoost, we prepare a dataset that contains all the predictors from past period (nutrients and last response), and also label that tells if the next response goes up or down.
 
@@ -128,7 +129,147 @@ diet_target[diet_target$fpgluk == -1,]$fpgluk <- 0
 
 ```
 
-This part should be cross-validated
+Likewise to the Bayesian network, also now a separate XGBoost model is trained for each blood test. XGBoost algorithm has multiple hyperparameters for specifying the model search. Following script implements search of best hyperparameters for each model. Parameters are searched with cross-validation so that any specific data partitioning to training and test sets don't affect the result.  
+
+```{r}
+library(xgboost)
+
+n <- nrow(diet_input)
+train.index = sample(n,floor(0.80*n))
+
+# Search best parameters for each model 
+modelparams <- list(best_param = list(),
+                    best_seednumber = 1234,
+                    best_logloss = Inf,
+                    best_logloss_index = 0)
+
+allparams <- list(modelparams, modelparams, modelparams, modelparams, modelparams)
+
+t<-1
+
+for (target in assumedtargets$Name)
+{
+  model_input <- diet_input[input_cols[[target]]]
+
+  train.data = as.matrix(model_input[train.index,])
+  train.label = as.matrix(diet_target[train.index,][target])
+
+  # These are not needed in cv
+  test.data = as.matrix(model_input[-train.index,])
+  test.label = as.matrix(diet_target[-train.index,][target])
+
+  # Transform the two data sets into xgb.Matrix
+  xgb.train = xgb.DMatrix(data=train.data,label=train.label)
+
+  modelparams <- allparams[[t]]
+
+  for (iter in 1:1000) {
+    
+      param <- list(objective = "multi:softprob",
+            booster="gbtree",
+            eval_metric = "mlogloss",
+            num_class = 2,
+            max_depth = sample(6:10, 1),
+            eta = runif(1, .01, .3),
+            gamma = runif(1, 0.0, 0.2), 
+            subsample = runif(1, .6, .9),
+            colsample_bytree = runif(1, .5, .8), 
+            min_child_weight = sample(1:40, 1),
+            max_delta_step = sample(1:10, 1)
+            )
+      
+      cv.nround = 10000
+      cv.nfold = 20
+      
+      seed.number = sample.int(10000, 1)[[1]]
+      set.seed(seed.number)
+      model.cv <- xgb.cv(data=xgb.train, params = param, nthread=4, 
+                      nfold=cv.nfold, nrounds=cv.nround,
+                      verbose = F, early_stopping_rounds=8, maximize=FALSE)
+  
+      min_logloss_index <- model.cv$best_iteration
+      min_logloss <- model.cv$evaluation_log[min_logloss_index]$test_mlogloss_mean
+  
+      if (min_logloss < modelparams$best_logloss) {
+          modelparams$best_logloss = min_logloss
+          modelparams$best_logloss_index = min_logloss_index
+          modelparams$best_seednumber = seed.number
+          modelparams$best_param = param
+      }
+  }
+  
+  allparams[[t]] <- modelparams 
+  t <- t + 1
+}
+
+```
+
+Models are then trained with found parameters and the accuracy is tested with a separated test set
+
+```{r}
+library(xgboost)
+eval.mat <- matrix(0,ncol=2,nrow=0)
+
+n <- nrow(diet_input)
+
+# index for parameter list
+t <- 1
+
+for (target in assumedtargets$Name)
+{
+  model_input <- diet_input[input_cols[[target]]]
+  
+  train.index = sample(n,floor(0.80*n))
+  train.data = as.matrix(model_input[train.index,])
+  train.label = as.matrix(diet_target[train.index,][target])
+  
+  test.data = as.matrix(model_input[-train.index,])
+  test.label = as.matrix(diet_target[-train.index,][target])
+  
+  # Transform the two data sets into xgb.Matrix
+  xgb.train = xgb.DMatrix(data=train.data,label=train.label)
+  xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+
+  # get best parameters for this model
+  modelparams <- allparams[[t]]
+  set.seed(modelparams$best_seednumber)
+  
+  model.xgb <- xgb.train(data=xgb.train, 
+                  params=modelparams$best_param, 
+                  nrounds=modelparams$best_logloss_index, 
+                  nthread=4)
+
+  # Evaluate predictions of this model
+
+  xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+    
+  xgb.pred = predict(model.xgb,test.data,reshape=T)
+  xgb.pred = as.data.frame(xgb.pred)
+  colnames(xgb.pred) = c(0,1)
+    
+  # Use the predicted label with the highest probability
+  xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
+  xgb.pred$label = test.label
+  
+  # Calculate the final accuracy
+  accuracy = sum(as.integer(xgb.pred$prediction==xgb.pred$label))/nrow(xgb.pred)  
+
+  # Cumulate result matrix
+  eval.mat <- rbind(eval.mat, c(target, accuracy))
+
+  # Plot feature importaces
+  importance_matrix <- xgb.importance(model = model.xgb)
+  #print(importance_matrix) 
+  xgb.plot.importance(importance_matrix = importance_matrix)
+  
+  t <- t + 1
+}  
+
+saveRDS(eval.mat, "evaluations/xgboost-cv-mat.rds")
+eval.mat
+```
+
+Without cross-validation
 
 ```{r}
 library(xgboost)
@@ -163,7 +304,7 @@ for (target in assumedtargets$Name)
     eval_metric="mlogloss",
     num_class=num_class
   )
-  
+ 
   model.xgb = xgb.train(
     params=params,
     data=xgb.train,
@@ -189,16 +330,14 @@ for (target in assumedtargets$Name)
 
   # Cumulate result matrix
   eval.mat <- rbind(eval.mat, c(target, accuracy))
+  
+  # Plot feature importaces
+  importance_matrix <- xgb.importance(model = model.xgb)
+  #print(importance_matrix) 
+  xgb.plot.importance(importance_matrix = importance_matrix)
 }  
 
-saveRDS(eval.mat, "evaluations/xgboost-mat.rds")
+saveRDS(eval.mat, "evaluations/xgboost-nocv-mat.rds")
 eval.mat
 ```
 
-
-```{r}
-importance_matrix <- xgb.importance(model = xgb.fit)
-print(importance_matrix)
-xgb.plot.importance(importance_matrix = importance_matrix)
-
-```
