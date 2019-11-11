@@ -91,5 +91,92 @@ for (holdout_subject in levels(sysdimet$SUBJECT_ID))
 }
 ```
 
+Next we can calculate NRMSE and classification metrics for cross-validated personal models
+
+```{r k-fold_nrmse, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+source("model_eval_functions.r")
+
+# Array of MSE summaries for each patient
+
+if (file.exists("evaluations/NRMSE-array_MEBNCV.rds"))
+{
+  nrmse.arr <- readRDS("evaluations/NRMSE-array_MEBNCV.rds")
+} else {
+  patients <- length(levels(sysdimet$SUBJECT_ID))
+
+  nrmse.arr <- array(0, 
+                   dim = c(nrow(assumedtargets), 4, patients),
+                   dimnames = list(assumedtargets$Name, c('week 4', 'week 8', 'week 12', '12 week change'), levels(sysdimet$SUBJECT_ID)))
+
+  saveRDS(nrmse.arr, "evaluations/NRMSE-array_MEBNCV.rds")
+}
+
+for (subject in levels(sysdimet$SUBJECT_ID))
+{
+  personal_nrmse <- matrix(0, nrow=0,ncol=5)
+  localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject)
+  
+  if (file.exists(localfit_directory))
+  {
+    pred_response <- get_pred_response(localfit_directory)
+    true_response <- get_true_response(subject_number)
+  
+    nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
+    nrmse <- rowMeans(nrmse_rows)
+  
+    personal_nrmse <- rbind(personal_nrmse, nrmse)
+  }
+
+  model_nrmse <- mean(colMeans(personal_nrmse))
+  nrmse.mat <- rbind(nrmse.mat, c("EXPFAM AR(1)", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
+}
+
+```
+
+
+```{r k-fold_eval, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+source("model_eval_functions.r")
+
+# Array of summaries for each patient
+
+if (file.exists("evaluations/Class-array_MEBNCV.rds"))
+{
+  class.arr <- readRDS("evaluations/Class-array_MEBNCV.rds")
+} else {
+  patients <- length(levels(sysdimet$SUBJECT_ID))
+
+  class.arr <- array(0, 
+                   dim = c(nrow(assumedtargets), 4, patients),
+                   dimnames = list(assumedtargets$Name, c('week 4', 'week 8', 'week 12', '12 week change'), levels(sysdimet$SUBJECT_ID)))
+
+  saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
+}
+
+for (subject in levels(sysdimet$SUBJECT_ID))
+{
+  class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+  
+  localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject)
+  
+  if (file.exists(localfit_directory))
+  {
+    pred_response <- get_pred_response(localfit_directory)
+    true_response <- get_true_response(subject_number)
+  
+    pred_delta <- make_delta(pred_response)
+    true_delta <- make_delta(true_response)
+    
+    sign_matrix <- sign(pred_delta) == sign(true_delta)
+    avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
+    
+    class.mat <- class.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+    
+    class.arr[,,subject] <- class.mat
+    saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
+  }
+  
+}
+
+```
 
 

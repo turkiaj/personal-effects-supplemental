@@ -1,5 +1,5 @@
 ---
-title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network Supplementary Materials"
+title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network, Supplementary Materials"
 author:
 - Jari Turkia, jari.turkia@cgi.com
 - University of Eastern Finland
@@ -51,7 +51,7 @@ assumedtargets <- datadesc[datadesc$Order==200,]
 
 Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are shown at the plot here for clarity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
 
-```{r spagettiplot_fshdl, echo=FALSE, fig.align="left", fig.height=1.5, fig.width=5, message=FALSE}
+```{r spagettiplot_fshdl, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -657,42 +657,6 @@ colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'a
 class_sum.mat <- round(class_sum.mat, 0)
 
 saveRDS(class_sum.mat, "evaluations/Class-matrix1.rds")
-```
-
-
-```{r k-fold_eval, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
-source("model_eval_functions.r")
-
-# Summary matrix for RHS model with out-of-sample data
-
-class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-rownames(class.mat) <- assumedtargets$Name
-colnames(class.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
-
-number_of_preds <- 0
-amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
-
-for (subject_number in c(2,5,7,11))
-{
-  number_of_preds <- number_of_preds + 1
-  subject_number <- 2
-  #localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject_number)
-  localfit_directory <- paste0("models/BLMM_gamma/ar1_rhs/", subject_number)
-
-  pred_response <- get_pred_response(localfit_directory)
-  true_response <- get_true_response(subject_number)
-
-  pred_delta <- make_delta(pred_response)
-  true_delta <- make_delta(true_response)
-  
-  sign_matrix <- sign(pred_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
-  
-  class.mat <- class.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
-}
-
-summary.mat
-
 ```
 
 ## Summary of the model comparison

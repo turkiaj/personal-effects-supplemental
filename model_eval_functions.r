@@ -68,12 +68,20 @@ get_pred_response <- function(localfit_directory) {
   {
     print(targetname)
     target_blmm <- mebn.get_localfit(paste0(localfit_directory,targetname))
-    ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
     
-    if (is.null(pred_response))
-      pred_response <- as.vector(ms$summary[1:4,c(1)])
+    if (!is.null(target_blmm))
+    {
+      ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+      
+      if (is.null(pred_response))
+        pred_response <- as.vector(ms$summary[1:4,c(1)])
+      else
+        pred_response <- rbind(pred_response, as.vector(ms$summary[1:4,c(1)]))
+    }
     else
-      pred_response <- rbind(pred_response, as.vector(ms$summary[1:4,c(1)]))
+    {
+      print(paste0("Local model ", paste0(localfit_directory,targetname), " is missing."))
+    }
   }
   
   colnames(pred_response) <- c(0,4,8,12)
