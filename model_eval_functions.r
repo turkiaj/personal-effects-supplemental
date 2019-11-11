@@ -60,6 +60,18 @@ get_true_response <- function(holdout_number) {
   return(true_response)
 }
 
+get_true_response_subj <- function(subject_id) {
+  
+  true_response <- true_values %>%
+    filter(SUBJECT_ID == subject_id) %>%
+    select(as.vector(assumedtargets$Name)) %>%
+    t %>%
+    as.matrix
+  
+  colnames(true_response) <- c(0,4,8,12)
+  return(true_response)
+}
+
 get_pred_response <- function(localfit_directory) {
   
   pred_response <- NULL
@@ -67,17 +79,28 @@ get_pred_response <- function(localfit_directory) {
   for (targetname in assumedtargets$Name)
   {
     print(targetname)
-    target_blmm <- mebn.get_localfit(paste0(localfit_directory,targetname))
-    ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+    target_blmm <- mebn.get_localfit(targetname, localfit_directory)
     
-    if (is.null(pred_response))
-      pred_response <- as.vector(ms$summary[1:4,c(1)])
+    if (!is.null(target_blmm))
+    {
+      ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+      
+      if (is.null(pred_response))
+        pred_response <- as.vector(ms$summary[1:4,c(1)])
+      else
+        pred_response <- rbind(pred_response, as.vector(ms$summary[1:4,c(1)]))
+    }
     else
-      pred_response <- rbind(pred_response, as.vector(ms$summary[1:4,c(1)]))
+    {
+      print(paste0("Local model ", paste0(localfit_directory,targetname), " is missing."))
+    }
   }
   
-  colnames(pred_response) <- c(0,4,8,12)
-  rownames(pred_response) <- as.vector(assumedtargets$Name)
+  if (!is.null(pred_response))
+  {
+    colnames(pred_response) <- c(0,4,8,12)
+    rownames(pred_response) <- as.vector(assumedtargets$Name)
+  }
   
   return(pred_response)
 }
