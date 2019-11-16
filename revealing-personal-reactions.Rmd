@@ -94,7 +94,7 @@ glukplot <- ggplot() +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "Glucose (mmol/l)") 
 
-grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
+grid.arrange(ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
 
 ```
 
@@ -423,7 +423,7 @@ kable(nrmse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents 
 
 ```
 
-It shows that Gamma distribution with AR(1) autocorralation structure fits best to data. Horseshoe prior on typical effects has shrinked some coefficients close to zero and it has increased mean NRMSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
+It shows that Gamma distribution with AR(1) autocorralation structure has best overall fit to data. Horseshoe prior on typical effects has shrinked some coefficients close to zero and it has increased mean NRMSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
 
 ```{r graph_with_normal_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 
@@ -540,7 +540,6 @@ nrmse.mat <- rbind(nrmse.mat, c("EXPFAM AR(1) RHS", round(colMeans(personal_nrms
 saveRDS(nrmse.mat, "evaluations/NRMSE-matrix2.rds")
 ```
 
-
 ```{r expfam_ar1_model, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 sysdimet_expfam_ar1 <- mebn.bipartite_expfam_bn(initial_graph, assumedpredictors, assumedtargets, expfam_ar1_dirs)
@@ -560,14 +559,13 @@ write.graph(sysdimet_expfam_ar1_rhs, "graphs/sysdimet_expfam_ar1_rhs.graphml", "
 Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. During the cross-validation we have estimated a separated model for each of the 106 patients with the data from other 105 patient. Prediction is then made for the left out patient.
 
 ```{r model_mse3}
-# Add CV to MSE table
+# Cross-validation.Rmd adds CV evaluations to NRMSE-matrix3.rds
 ```
-
 
 Following table summarizes the prediction accuracy with mean squared error 
 
 ```{r model_nrmse2, echo=FALSE, message=FALSE, warning=FALSE}
-nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
 
 kable(nrmse.mat) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
@@ -582,17 +580,19 @@ kable(nrmse.mat) %>%
 ```{r nrmse_plot_vertical, fig.height = 3, fig.width = 5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
 library(ggplot2)
 
-nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
+#nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
 nrmse.df <- data.frame(nrmse.mat[,1])
 
 # model is a string factors, NRMSEs are doubles
-nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS")))
+#nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS")))
+nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS", "Gamma AR(1) RHS CV")))
 nrmse.df <- cbind(nrmse.df, apply(nrmse.mat[,2:7], 2, as.numeric))[,2:8]
 
 #label.df <- as.data.frame(paste0(colnames(nrmse.mat)[2:7], " ", sprintf(as.numeric(nrmse.mat[6,2:7]), fmt = '%#.3f')))
 #label.df <- as.data.frame(colnames(nrmse.mat)[2:7])
 label.df <- as.data.frame(c("cholesterol","","fsins","","fpgluk","mean"))
-label.df <- cbind(label.df, as.numeric(nrmse.mat[6,2:7]))
+label.df <- cbind(label.df, as.numeric(nrmse.mat[7,2:7]))
 colnames(label.df) <- c("label", "value")
 
 ggplot(nrmse.df, show.legend = FALSE) +
@@ -602,9 +602,9 @@ ggplot(nrmse.df, show.legend = FALSE) +
   geom_line(aes(y = fskol, x = model, group=1), size=0.3) +
   geom_line(aes(y = fpgluk, x = model, group=1), size=0.3) +
   geom_line(aes(y = mean, x = model, group=1), size=1) +
-  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS", y = value, hjust = .2, vjust = (label == "fpgluk")*1.2+1.2), size = 3) +
-  scale_y_continuous() +
-  labs(x = "", y = "NRMSE") + 
+  geom_text(data = label.df, aes(label = label, x = "Gamma AR(1) RHS CV", y = value, hjust = .4, vjust = (label == "fpgluk")*1.1+1.2), size = 3) +
+  scale_y_continuous(trans="log10") +
+  labs(x = "", y = "Log(NRMSE)") + 
   coord_flip() +
   theme_bw() +
   theme(axis.text.x=element_text(size=rel(0.9)), plot.margin = margin(0,3,0,0)) 
@@ -618,10 +618,10 @@ Normalized root mean squared error (NRMSE) is good for comparing model candidate
 
 Classification test allows also to compare MEBN with other classification methods. XGBoost is a well-performing decision tree method. It is a non-parametric machine learning method that learns personal reactions only by example. Following compares the cross-validated predictive accuracy of XGBoost with MEBN predictions (MEBN CV) that uses EXPFAM AR(1) RHS-model. Also in-sample MEBN fit with non-shrinked EXPFAM AR(1) is given for comparison. This best predicting model is used for dataset analysis at rest of this notebook.      
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+```{r expfam_ar1_accuracy, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 source("model_eval_functions.r")
 
-# Summary matrix for RHS model with in-sample data
+# Summary matrix for AR(1) NON-RHS model with in-sample data
 
 class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
 rownames(class.mat) <- assumedtargets$Name
@@ -658,6 +658,46 @@ class_sum.mat <- round(class_sum.mat, 0)
 
 saveRDS(class_sum.mat, "evaluations/Class-matrix1.rds")
 ```
+```{r expfam_ar1_rhs_accuracy, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+source("model_eval_functions.r")
+
+# Summary matrix for RHS model with in-sample data
+
+class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+rownames(class.mat) <- assumedtargets$Name
+colnames(class.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
+
+allrep_expfam_ar1_rhs <- get_rep_response_for_expfam(expfam_ar1_rhs_dirs)
+
+number_of_preds <- 0
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
+
+for (subject_number in 1:amount_subjects)
+{
+  number_of_preds <- number_of_preds + 1
+  
+  rep_response <- get_rep_response(allrep_expfam_ar1_rhs, subject_number)
+  true_response <- get_true_response(subject_number)
+  
+  rep_delta <- make_delta(rep_response)
+  true_delta <- make_delta(true_response)
+  
+  sign_matrix <- sign(rep_delta) == sign(true_delta)
+  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
+  
+  class.mat <- class.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+}
+
+class_sum.mat <- class.mat/number_of_preds * 100
+
+class_sum.mat <- cbind(class_sum.mat, rowMeans(class_sum.mat[,1:3]))
+colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
+
+#percent.mat <- rbind(percent.mat, percent_nonrhs.mat)
+class_sum.mat <- round(class_sum.mat, 0)
+
+saveRDS(class_sum.mat, "evaluations/Class-expfam_rhs_matrix.rds")
+```
 
 ## Summary of the model comparison
 
@@ -680,10 +720,17 @@ class.df$model <- "MEBN"
 
 colnames(class.df) <- c("accuracy", "method")
 
+# MEBN RHS
+mebn_rhs.mat <- readRDS("evaluations/Class-expfam_rhs_matrix.rds")
+mebn_rhs.df <- as.data.frame(mebn_rhs.mat[,5]-2)
+mebn_rhs.df$method <- "MEBN RHS"
+colnames(mebn_rhs.df) <- c("accuracy","method")
+class.df <- rbind(class.df, mebn_rhs.df)
+
 # Add MEBN CV for comparison
-mebn_cv.mat <- readRDS("evaluations/Class-matrix1.rds")
+mebn_cv.mat <- readRDS("evaluations/MEBNCV-matrix.rds")
 mebn_cv.df <- as.data.frame(mebn_cv.mat[,5]-2)
-mebn_cv.df$method <- "MEBN CV"
+mebn_cv.df$method <- "MEBN RHS CV"
 colnames(mebn_cv.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_cv.df)
 
@@ -695,7 +742,7 @@ colnames(xgboost.df) <- c("accuracy","method")
 class.df <- rbind(class.df, xgboost.df)
 
 # Add response column for all methods
-class.df$response <- rep(rownames(class_sum.mat), 3)
+class.df$response <- rep(rownames(class_sum.mat), 4)
 
 ggplot() +
   geom_col(data = class.df, aes(x=response, y=accuracy, fill=method), position = "dodge") +
@@ -711,23 +758,20 @@ ggplot() +
 # Load in-sample MEBN first
 class_sum.mat <- readRDS(file="evaluations/Class-matrix1.rds")
 
-# TODO: Add out-of-sample MEBN
-
 # Add XGBoost
 #class_sum.mat <- rbind(class_sum.mat, xgboost.mat)
 
 class_sum.mat[,1:5] <- paste0(class_sum.mat[,1:5], "%")
 
-kable(class_sum.mat) %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-  row_spec(0,bold=TRUE)
+#kable(class_sum.mat) %>%
+#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
 
-#kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
-#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
-# row_spec(0,bold=TRUE)
+kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+ row_spec(0,bold=TRUE)
 
 ```
-
 
 
 # Typical effects of nutrition, and variance from the typical effects
@@ -1212,26 +1256,27 @@ In clusters 1 and 2 there are patients whose blood insulin levels react on lower
 
 During the cross-validation we estimated personal models for each patient. Next we illustrate the differences within personal reaction types by picking few most distant ones. 
 
-```{r safa_differences, echo=FALSE, eval=TRUE, message=FALSE}
+```{r mufa_differences, echo=FALSE, eval=TRUE, message=FALSE}
 p <- nrow(assumedpredictors)
 ins_idx <- match("fsins", assumedtargets$Name)
-safa_idx <- match("safa", assumedpredictors$Name)
+mufa_idx <- match("mufa", assumedpredictors$Name)
 
-safa_fsins_idx <- p*(ins_idx-1) + safa_idx
+mufa_fsins_idx <- p*(ins_idx-1) + mufa_idx
 
-# safa -> fsins for every patient
-safa_fsins <- as.data.frame(cbind(personal_effects[, safa_fsins_idx], seq(1, nrow(personal_effects))))
-colnames(safa_fsins) <- c("effect", "subject_number")
+# mufa -> fsins for every patient
+mufa_fsins <- as.data.frame(cbind(personal_effects[, mufa_fsins_idx], seq(1, nrow(personal_effects))))
+colnames(mufa_fsins) <- c("effect", "subject_number")
 
-ordered_safa_fsins <- safa_fsins[order(-safa_fsins$effect),]
+ordered_mufa_fsins <- mufa_fsins[order(-mufa_fsins$effect),]
 
-person_id1 <- head(ordered_safa_fsins$subject_number,1)
-person_id2 <- tail(ordered_safa_fsins$subject_number,1)
+person_id1 <- head(ordered_mufa_fsins$subject_number,1)
+person_id2 <- tail(ordered_mufa_fsins$subject_number,1)
 
 #What reaction clusters these patients belong?
-#sysdimet[person_id1,]$effect_group   # patient 1 -> cluster 3
-#sysdimet[person_id2,]$effect_group   # patient 86 -> cluster 2
+#sysdimet[person_id1,]$effect_group   # patient 1 (S01) -> cluster 3
+#sysdimet[person_id2,]$effect_group   # patient 43 (S104) -> cluster 2  
 
+#mean(sysdimet[sysdimet$SUBJECT_ID == 'S104',]$fsins)person_id2
 ```
 
 ```{r personal_graph1, echo=FALSE, eval=TRUE}
@@ -1243,14 +1288,14 @@ expfam_ar1_dirs <- assumedtargets
 expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-# patient 1 -> cluster 3
+# patient 1 (S01) -> cluster 3
 personal_graph1 <- mebn.personal_graph(person_id = person_id1, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
                                        assumed_targets = assumedtargets, 
                                        local_distributions = expfam_ar1_dirs)
 
-write.graph(personal_graph1, "graphs/personal_insample_graph_1.graphml", "graphml")
+write.graph(personal_graph1, "graphs/personal_insample_graph_s01.graphml", "graphml")
 ```
 
 ```{r personal_graph2, echo=FALSE, eval=TRUE}
@@ -1260,34 +1305,59 @@ expfam_ar1_dirs <- assumedtargets
 expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-# patient 86 -> cluster 2
+# patient 43 (S104) -> cluster 2
 personal_graph2 <- mebn.personal_graph(person_id = person_id2, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
                                        assumed_targets = assumedtargets, 
                                        local_distributions = expfam_ar1_dirs)
 
-write.graph(personal_graph2, "graphs/personal_insample_graph_86.graphml", "graphml")
+write.graph(personal_graph2, "graphs/personal_insample_graph_s104.graphml", "graphml")
 ```
 
 We can then compare the visualizations of the personal reaction graphs. The effect of cholesterol medication is most significant difference, but other differences exist as well.
 
-**Subject 1**
-
-```{r personal_graphvisu1, eval=TRUE, fig.height = 4, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
-personal_graph1 <- read.graph("graphs/personal_insample_graph_1.graphml", "graphml")
+personal_graph1 <- read.graph("graphs/personal_insample_graph_s01.graphml", "graphml")
+personal_graph2 <- read.graph("graphs/personal_insample_graph_s104.graphml", "graphml")
+
+par(mfrow=c(2,1))
 layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout)
+title("Patient 1 from cluster 3",cex.main=0.5)
+layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout)
+title("Patient 2 from cluster 2",cex.main=0.5)
 ```
 
-**Subject 86**
+```{r, echo=FALSE}
+personal_effect <- function(effect, patient, p_graph){
+  effv <- V(p_graph)[name = paste0("personal_",effect)]
+  eff <- c(patient, effect, effv$value_lCI, effv$value, effv$value_uCI)
+  return(eff)
+}
 
-```{r personal_graphvisu2, eval=TRUE, fig.height = 4, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
-source("mebn/MEBN.r")
-require(igraph)
-personal_graph2 <- read.graph("graphs/personal_insample_graph_86.graphml", "graphml")
-layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout)
+pe <- personal_effect("safa_fsins", 1, personal_graph1)
+pe <- rbind(pe, personal_effect("safa_fsins", 2, personal_graph2))
+pe <- rbind(pe, personal_effect("ligniini_fsins", 1, personal_graph1))
+pe <- rbind(pe, personal_effect("ligniini_fsins", 2, personal_graph2))
+pe <- rbind(pe, personal_effect("cvit_fsins", 1, personal_graph1))
+pe <- rbind(pe, personal_effect("cvit_fsins", 2, personal_graph2))
+pe <- rbind(pe, personal_effect("energia_fsins", 1, personal_graph1))
+pe <- rbind(pe, personal_effect("energia_fsins", 2, personal_graph2))
+pe <- rbind(pe, personal_effect("epa_fsins", 1, personal_graph1))
+pe <- rbind(pe, personal_effect("epa_fsins", 2, personal_graph2))
+
+colnames(pe)<-c("Patient", "Effect", "Lower-CI", "Mean value", "Upper-CI")
+
+#kable(pe) %>%
+#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
+
+#kable(pe, "latex", booktabs = T, caption = "") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
+
 ```
 
 

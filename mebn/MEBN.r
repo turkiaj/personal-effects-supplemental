@@ -1276,7 +1276,7 @@ mebn.layout_bipartite_horizontal <- function(layout_graph, rank_condition)
 
 ##################################################
   
-mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout = NULL)
+mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout = NULL, plot_title="")
 {
   library(igraph)
   
@@ -1332,8 +1332,8 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
        edge.arrow.width=1,
        curved = 0,
        margin=0,
-       layout.par = par(mar=c(1,0,0,0)))       
-  
+       layout.par = par(mar=c(0.8,0,0.3,0)))       
+    
   return(graph_layout)
 }
 

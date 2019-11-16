@@ -80,7 +80,7 @@ get_pred_response <- function(localfit_directory) {
   {
     print(targetname)
     target_blmm <- mebn.get_localfit(targetname, localfit_directory)
-    
+
     if (!is.null(target_blmm))
     {
       ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)

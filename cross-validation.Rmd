@@ -93,8 +93,9 @@ for (holdout_subject in levels(sysdimet$SUBJECT_ID))
 
 Next we can calculate NRMSE and classification metrics for cross-validated personal models
 
-```{r k-fold_nrmse, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r k-fold_nrmse, cache=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
+source("mebn/MEBN.r")
 
 # Array of MSE summaries for each patient
 
@@ -104,31 +105,51 @@ if (file.exists("evaluations/NRMSE-array_MEBNCV.rds"))
 } else {
   patients <- length(levels(sysdimet$SUBJECT_ID))
 
-  nrmse.arr <- array(0, 
-                   dim = c(nrow(assumedtargets), 4, patients),
-                   dimnames = list(assumedtargets$Name, c('week 4', 'week 8', 'week 12', '12 week change'), levels(sysdimet$SUBJECT_ID)))
+  nrmse.arr <- array(-1, 
+                   dim = c(1, nrow(assumedtargets)+2, patients),
+                   dimnames = list("NRMSE", c("model", as.vector(assumedtargets$Name), "mean"), levels(sysdimet$SUBJECT_ID)))
 
   saveRDS(nrmse.arr, "evaluations/NRMSE-array_MEBNCV.rds")
 }
 
 for (subject in levels(sysdimet$SUBJECT_ID))
 {
-  personal_nrmse <- matrix(0, nrow=0,ncol=5)
-  localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject)
+  stored.mat <- nrmse.arr[,,subject] 
   
-  if (file.exists(localfit_directory))
+  if (stored.mat[1] == -1)
   {
-    pred_response <- get_pred_response(localfit_directory)
-    true_response <- get_true_response(subject_number)
+    nrmse.mat <- matrix(0, nrow=0,ncol=7)
+    
+    personal_nrmse <- matrix(0, nrow=0,ncol=5)
+    localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject, "/")
+    
+    if (file.exists(localfit_directory))
+    {
+      print(subject)
+      
+      pred_response <- get_pred_response(localfit_directory)
+      
+      if (!is.null(pred_response))
+      {
+        true_response <- get_true_response_subj(subject)
+    
+        nrmse_rows <- mebn.NRMSE(pred_response, true_response, mean(true_response))
+        nrmse <- rowMeans(nrmse_rows)
+    
+        personal_nrmse <- rbind(personal_nrmse, nrmse)
+      }
+    }
   
-    nrmse_rows <- mebn.NRMSE(rep_response, true_response, mean(true_response))
-    nrmse <- rowMeans(nrmse_rows)
-  
-    personal_nrmse <- rbind(personal_nrmse, nrmse)
-  }
+    model_nrmse <- mean(colMeans(personal_nrmse))
+    nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1) RHS CV", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
+    
+    nrmse.arr[,,subject] <- nrmse.mat
+    
+    saveRDS(nrmse.arr, "evaluations/NRMSE-array_MEBNCV.rds")
 
-  model_nrmse <- mean(colMeans(personal_nrmse))
-  nrmse.mat <- rbind(nrmse.mat, c("EXPFAM AR(1)", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
+  } else {
+     print(paste0(subject, " is evaluated."))
+  }
 }
 
 ```
@@ -154,32 +175,39 @@ if (file.exists("evaluations/Class-array_MEBNCV.rds"))
 
 for (subject in levels(sysdimet$SUBJECT_ID))
 {
-  class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+  stored.mat <- class.arr[,,subject] 
   
-  localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject, "/")
-  
-  if (file.exists(localfit_directory))
+  if (stored.mat[1,1] == -1)
   {
-    print(subject)
+    class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
     
-    pred_response <- get_pred_response(localfit_directory)
+    localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject, "/")
     
-    if (!is.null(pred_response))
+    if (file.exists(localfit_directory))
     {
-      true_response <- get_true_response_subj(subject)
-    
-      pred_delta <- make_delta(pred_response)
-      true_delta <- make_delta(true_response)
+      print(subject)
       
-      sign_matrix <- sign(pred_delta) == sign(true_delta)
-      avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
+      pred_response <- get_pred_response(localfit_directory)
       
-      class.mat <- cbind(sign_matrix[,2:4]*1, avg_change*1)
+      if (!is.null(pred_response))
+      {
+        true_response <- get_true_response_subj(subject)
       
-      class.arr[,,subject] <- class.mat
+        pred_delta <- make_delta(pred_response)
+        true_delta <- make_delta(true_response)
+        
+        sign_matrix <- sign(pred_delta) == sign(true_delta)
+        avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
+        
+        class.mat <- cbind(sign_matrix[,2:4]*1, avg_change*1)
+        
+        class.arr[,,subject] <- class.mat
+      }
+
+      saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
     }
-    
-    saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
+  } else {
+    print(paste0(subject, " is evaluated."))
   }
   
 }
@@ -187,3 +215,70 @@ for (subject in levels(sysdimet$SUBJECT_ID))
 ```
 
 
+
+Then we summarize the results of k-fold accuracy cross-validation in a matrix for the main document
+
+
+```{r nrmse-summary, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE}
+
+# Separated personal predictions
+nrmse.arr <- readRDS("evaluations/NRMSE-array_MEBNCV.rds")
+
+# Add to other evaluations
+nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
+
+# Summary vector
+nrmse.sum <- rep(0, 6)
+number_of_preds <- 0
+
+# Add all the personal prediction matrices
+for (subject in levels(sysdimet$SUBJECT_ID))
+{
+  personal_nrmse <- as.numeric(nrmse.arr[,2:7,subject])
+
+  if (personal_nrmse[1] != -1 && personal_nrmse[1] != "NaN") {
+    number_of_preds <- number_of_preds + 1
+    nrmse.sum <- nrmse.sum + personal_nrmse
+  }
+}
+
+nrmse.sum <- nrmse.sum/number_of_preds
+
+nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1) RHS CV", round(nrmse.sum,3)))
+
+saveRDS(nrmse.mat, "evaluations/NRMSE-matrix3.rds")
+```
+
+```{r k-fold-summary, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE}
+
+# Separated personal predictions
+class.arr <- readRDS("evaluations/Class-array_MEBNCV.rds")
+
+# Summary matrix
+class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+rownames(class.mat) <- assumedtargets$Name
+
+number_of_preds <- 0
+
+# Add all the personal prediction matrices
+for (subject in levels(sysdimet$SUBJECT_ID))
+{
+  personal_pred <- class.arr[,,subject]
+
+  if (personal_pred[1,1] != -1) {
+    number_of_preds <- number_of_preds + 1
+    class.mat <- class.mat + personal_pred
+  }
+}
+
+class_sum.mat <- class.mat/number_of_preds * 100
+
+class_sum.mat <- cbind(class_sum.mat, rowMeans(class_sum.mat[,1:3]))
+colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
+
+class_sum.mat <- round(class_sum.mat, 0)
+class_sum.mat
+
+#saveRDS(class_sum.mat, "evaluations/MEBNCV-matrix.rds")
+
+```
