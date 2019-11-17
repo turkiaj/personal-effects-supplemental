@@ -28,28 +28,29 @@ transformed data {
   matrix[N-NH,p-1] X_t; // training input
   matrix[N-NH,k] Z_t;   // training input
   vector[N-NH] Y_t;     // training response
-  int group_t[N-NH];    // training grouping
   int t=1;              // index 
 
-  matrix[N,p-1] X_h;    // holdout input
-  matrix[N,k] Z_h;      // holdout input
-  vector[N] Y_h;        // holdout response
-
+  matrix[NH,p-1] X_h;   // holdout input
+  matrix[NH,k] Z_h;     // holdout input
+  vector[NH] Y_h;       // holdout response
+  int h=1;              // index 
+  
   for (n in 1:N)
   {
-    // All data is needed for holdout predictions to get AR(1) correct
-    // the intercept is removed from the design matrix 
-    X_h[n,1:p-1] = X[n,2:p];
-    Z_h[n] = Z[n];
-    Y_h[n] = Y[n] + offset;
-
-    if (holdout[n] == 0)
+    if (holdout[n] == 1)
+    {
+      // the intercept is removed from the design matrix 
+      X_h[h,1:p-1] = X[n,2:p];
+      Z_h[h] = Z[n];
+      Y_h[h] = Y[n] + offset;
+      h += 1;
+    }
+    else
     {
       // the intercept is removed from the design matrix 
       X_t[t,1:p-1] = X[n,2:p];
       Z_t[t] = Z[n];
       Y_t[t] = Y[n] + offset;
-      group_t[t] = group[n];
       t += 1;
     }
   }  
@@ -133,10 +134,10 @@ model {
     mu = beta_Intercept + offset + X_t[n] * beta;
     
     // - add personal effects
-    mu += Z_t[n] * b[group_t[n]];
+    mu += Z_t[n] * b[group[n]];
   
-    if (current_group != group_t[n]) {
-      current_group = group_t[n];
+    if (current_group != group[n]) {
+      current_group = group[n];
       group_size = 1;
     } 
     else
@@ -156,7 +157,6 @@ model {
 
 generated quantities { 
   vector[NH] Y_pred;              // predicted response
-  int pred_idx = 1;
   real mu_hat;
   real g_beta_hat;
   int group_size = 0;     // group variables for AR computation
@@ -165,9 +165,12 @@ generated quantities {
   vector[k-1] personal_effect[J];
 
   // Posterior prediction for holdout person
-  for (n in 1:N)
+  
+  for (n in 1:NH)
   {
-    // Observation grouping is followed for all observations for correct ar1 calculation
+    // - offset constant is needed to model transformed data correctly
+    mu_hat = beta_Intercept + offset + X_h[n] * beta + Z_h[n] * b[group[n]];
+    
     if (current_group != group[n]) {
       current_group = group[n];
       group_size = 1;
@@ -175,21 +178,14 @@ generated quantities {
     else
       group_size += 1;
 
-    if (holdout[n] == 1)
-    {
-      // - offset constant is needed to model transformed data correctly
-      mu_hat = beta_Intercept + offset + X_h[n] * beta + Z_h[n] * b[group[n]];
-    
-      // - add autoregression coefficient from previous possibly correlated observation 
-      if (group_size > 1)
-        mu_hat += Y_h[n-1] * ar1;
+    // - add autoregression coefficient from previous possibly correlated observation 
+    if (group_size > 1)
+      mu_hat += Y_h[n-1] * ar1;
       
       g_beta_hat = g_alpha / mu_hat;
       
       // - the offset constant is substracted from final prediction
-      Y_pred[pred_idx] = gamma_rng(g_alpha, g_beta_hat) - offset;
-      pred_idx += 1;
-    }
+      Y_pred[n] = gamma_rng(g_alpha, g_beta_hat) - offset;
   }
 
   // Personal effects for both training and holdout persons 

@@ -156,15 +156,23 @@ get_rep_response <- function(rep_matrix, subject_number) {
   return(rep_matrix[,s:e])
 }  
 
-make_delta <- function(true_response)
+
+make_delta <- function(true_response, pred_response)
 {
-  true_delta <- true_response
-  true_delta[,4] <- true_delta[,4] - true_delta[,3]
-  true_delta[,3] <- true_delta[,3] - true_delta[,2]
-  true_delta[,2] <- true_delta[,2] - true_delta[,1]
-  true_delta[,1] <- 0
+  week0 <- 0
+  week4 <- pred_response[,2] - true_response[,1] 
+  week8 <- pred_response[,3] - true_response[,2] 
+  week12 <- pred_response[,4] - true_response[,3] 
+  delta <- cbind(week0,week4,week8,week12)
   
-  return(true_delta)
+  return(delta)
+  
+  #true_delta <- true_response
+  #true_delta[,4] <- true_delta[,4] - true_delta[,3]
+  #true_delta[,3] <- true_delta[,3] - true_delta[,2]
+  #true_delta[,2] <- true_delta[,2] - true_delta[,1]
+  #true_delta[,1] <- 0
+  #return(true_delta)
 }
 
 

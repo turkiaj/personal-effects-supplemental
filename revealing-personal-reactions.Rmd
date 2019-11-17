@@ -623,9 +623,9 @@ source("model_eval_functions.r")
 
 # Summary matrix for AR(1) NON-RHS model with in-sample data
 
-class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=3)
 rownames(class.mat) <- assumedtargets$Name
-colnames(class.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
+colnames(class.mat) <- c('week 4', 'week 8', 'week 12')
 
 allrep_expfam_ar1 <- get_rep_response_for_expfam(expfam_ar1_dirs)
 
@@ -639,33 +639,33 @@ for (subject_number in 1:amount_subjects)
   rep_response <- get_rep_response(allrep_expfam_ar1, subject_number)
   true_response <- get_true_response(subject_number)
   
-  rep_delta <- make_delta(rep_response)
-  true_delta <- make_delta(true_response)
+  rep_delta <- make_delta(true_response, rep_response)
+  true_delta <- make_delta(true_response, true_response)
   
   sign_matrix <- sign(rep_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
-  
-  class.mat <- class.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+  sign_matrix[,2:4]*1
+
+  class.mat <- class.mat + sign_matrix[,2:4]*1
 }
 
 class_sum.mat <- class.mat/number_of_preds * 100
 
 class_sum.mat <- cbind(class_sum.mat, rowMeans(class_sum.mat[,1:3]))
-colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
+colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'mean accuracy')
 
 #percent.mat <- rbind(percent.mat, percent_nonrhs.mat)
 class_sum.mat <- round(class_sum.mat, 0)
-
 saveRDS(class_sum.mat, "evaluations/Class-matrix1.rds")
 ```
+
 ```{r expfam_ar1_rhs_accuracy, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 source("model_eval_functions.r")
 
 # Summary matrix for RHS model with in-sample data
 
-class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
+class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=3)
 rownames(class.mat) <- assumedtargets$Name
-colnames(class.mat) <- c('week 4', 'week 8', 'week 12', '12 week change')
+colnames(class.mat) <- c('week 4', 'week 8', 'week 12')
 
 allrep_expfam_ar1_rhs <- get_rep_response_for_expfam(expfam_ar1_rhs_dirs)
 
@@ -679,23 +679,20 @@ for (subject_number in 1:amount_subjects)
   rep_response <- get_rep_response(allrep_expfam_ar1_rhs, subject_number)
   true_response <- get_true_response(subject_number)
   
-  rep_delta <- make_delta(rep_response)
-  true_delta <- make_delta(true_response)
+  rep_delta <- make_delta(true_response, rep_response)
+  true_delta <- make_delta(true_response, true_response)
   
   sign_matrix <- sign(rep_delta) == sign(true_delta)
-  avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(rep_response[,2:4])/3 - rep_response[,1])
-  
-  class.mat <- class.mat + cbind(sign_matrix[,2:4]*1, avg_change*1)
+  class.mat <- class.mat + sign_matrix[,2:4]*1
 }
 
 class_sum.mat <- class.mat/number_of_preds * 100
 
 class_sum.mat <- cbind(class_sum.mat, rowMeans(class_sum.mat[,1:3]))
-colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
+colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'mean accuracy')
 
 #percent.mat <- rbind(percent.mat, percent_nonrhs.mat)
 class_sum.mat <- round(class_sum.mat, 0)
-
 saveRDS(class_sum.mat, "evaluations/Class-expfam_rhs_matrix.rds")
 ```
 
@@ -712,7 +709,7 @@ class_sum.mat <- readRDS("evaluations/Class-matrix1.rds")
 
 # Pick only 4 weeks average for comparison from MEBN
 # TODO: what about 12 weeks change?
-class.df <- as.data.frame(as.vector(class_sum.mat[,5]))
+class.df <- as.data.frame(as.vector(class_sum.mat[,4]))
 class.df$model <- "MEBN"
 
 #labs <- c("4 weeks", "12 weeks")
@@ -722,14 +719,14 @@ colnames(class.df) <- c("accuracy", "method")
 
 # MEBN RHS
 mebn_rhs.mat <- readRDS("evaluations/Class-expfam_rhs_matrix.rds")
-mebn_rhs.df <- as.data.frame(mebn_rhs.mat[,5]-2)
+mebn_rhs.df <- as.data.frame(mebn_rhs.mat[,4]-2)
 mebn_rhs.df$method <- "MEBN RHS"
 colnames(mebn_rhs.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_rhs.df)
 
 # Add MEBN CV for comparison
 mebn_cv.mat <- readRDS("evaluations/MEBNCV-matrix.rds")
-mebn_cv.df <- as.data.frame(mebn_cv.mat[,5]-2)
+mebn_cv.df <- as.data.frame(mebn_cv.mat[,4]-2)
 mebn_cv.df$method <- "MEBN RHS CV"
 colnames(mebn_cv.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_cv.df)

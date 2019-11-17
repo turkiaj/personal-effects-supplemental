@@ -91,6 +91,92 @@ for (holdout_subject in levels(sysdimet$SUBJECT_ID))
 }
 ```
 
+
+Holdout last observations for holdout-patients. Those are predicted in cross-validation.
+
+```{r 10-fold_holdout, echo=FALSE, eval=TRUE, message=FALSE}
+library(igraph)
+
+# Cross-validation models are stored in holdout-folders
+
+for (holdout_suffix in as.character(0:9))
+{
+  # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from week 12
+  holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == 12))
+  cvdir <- paste0("/media/jari/Jarin WD Passport/cvmodels/week12/holdout_", holdout_suffix)
+  
+  if (!dir.exists(cvdir))
+  {
+    dir.create(cvdir)
+  
+    initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+    
+    sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                     inputdata = sysdimet,
+                                     targetdata = holdout_index,
+                                     predictor_columns = assumedpredictors, 
+                                     assumed_targets = assumedtargets, 
+                                     group_column = "SUBJECT_ID",
+                                     local_estimation = mebn.sampling,
+                                     local_model_cache = cvdir, 
+                                     stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv.stan",
+                                     reg_params = shrinkage_parameters,
+                                     normalize_values = TRUE)
+    
+    saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
+  }
+}
+```
+
+Accuracy of predictions
+
+```{r}
+source("model_eval_functions.r")
+source("mebn/MEBN.r")
+
+localfit_directory <- "/media/jari/Jarin WD Passport/cvmodels/holdout_0"
+targetname <- "fshdl"
+
+target_blmm <- mebn.get_localfit(targetname, localfit_directory)
+
+# Predictions for week 12 of holdout patients
+ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+
+pred_week12 <- as.vector(ms$summary[,1])
+
+holdout_subjects <- unique(sysdimet[endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix),]$SUBJECT_ID)
+
+true_response <- sysdimet %>%
+  filter(SUBJECT_ID %in% holdout_subjects) %>%
+  filter(WEEK == 12) %>%
+  select("fshdl")
+
+nrmse_rows <- mebn.NRMSE(pred_week12, true_response$fshdl, mean(true_response$fshdl))
+nrmse_rows
+nrmse <- mean(nrmse_rows)
+nrmse
+
+true_week8 <- sysdimet %>%
+  filter(SUBJECT_ID %in% holdout_subjects) %>%
+  filter(WEEK == 8) %>%
+  select("fshdl")
+
+true_week12 <- sysdimet %>%
+  filter(SUBJECT_ID %in% holdout_subjects) %>%
+  filter(WEEK == 12) %>%
+  select("fshdl")
+
+sign(true_week12$fshdl - true_week8$fshdl)
+
+sign(pred_week12 - true_week8$fshdl)
+
+(12-5)/12
+      
+```
+
+
+
+
 Next we can calculate NRMSE and classification metrics for cross-validated personal models
 
 ```{r k-fold_nrmse, cache=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
