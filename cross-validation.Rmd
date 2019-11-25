@@ -3,9 +3,13 @@ title: "Model cross-validation"
 output: html_notebook
 ---
 
-This is notebook runs model cross-validation. It takes substantial amount of time and so this model generation is separated to this own notebook. The results and stored and analyzed in the main notebook.
+This is notebook runs the model cross-validation. In the cross-validation the data are divided in separate folds where one in turn is held out from the model estimation and it is used in testing how well the model predicts the results of unseen patients. Separate models are estimated for all the folds with different unseen patients as a test group. 
 
-For Sysdimet dataset we compute a separate model for every 106 patients where measurements of one patient is left out from the model estimation. Input data of this left out patient is used to predict the patient's response and it is compared to actual blood test values.
+The data partitioning is done here by leaving out one blood test measurement from every tenth patient on weeks 4, 8 and 12. As the model uses one previous blood test measurement as a predictor, the week 0 is not considered in predictions. It is used as data for week 4 predictions.
+
+Execution of this notebook takes about two days with a modern laptop and so this model generation is separated to this own notebook. All the intermediate results are stored in files and the execution continues from previous result if it is paused. The evaluation summaries are stored in evaluations/-folder from where they are included in the main notebook.
+
+Same data files and model parameters are used here as in the model development 
 
 ```{r setup, include=FALSE}
 library(knitr)
@@ -27,7 +31,7 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 ```
 
-```{r data_loading, echo=FALSE, message=FALSE}
+```{r data_loading, message=FALSE}
 
 # Read the data description
 datadesc <- read.csv(file="data/SYSDIMET_data_description.csv", header = TRUE, sep = ";")
@@ -40,14 +44,14 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
-The final model candidate with hierarchical Gamma-regression, Regularized Horseshoe-shrinkage and AR(1) autocorrelation process is used in this cross validation.
+In the cross-validation two different model candidates are used: Gamma RHS AR(1) and Expfam RHS AR(1). The latter uses Normal distribution in modeling blood insulin. Same RHS parameters are used than before
 
 ```{r shrinkage_parameters, echo=TRUE, message=FALSE}
 shrinkage_parameters <- within(list(),
 {
     scale_icept  <- 1         # prior std for the intercept
-    scale_global <- 0.02428   # scale for the half-t prior for tau: 
-                              # ((p0=11) / (D=22-11)) * (sigma = 1 / sqrt(n=106*4))
+    scale_global <- 0.02266   # scale for the half-t prior for tau: 
+                              # ((p0=7) / (D=22-7)) * (sigma = 1 / sqrt(n=106*4))
     nu_global    <- 1         # degrees of freedom for the half-t priors for tau
     nu_local     <- 1         # degrees of freedom for the half-t priors for lambdas
     slab_scale   <- 1         # slab scale for the regularized horseshoe
@@ -55,316 +59,274 @@ shrinkage_parameters <- within(list(),
 })
 ```
 
-Here we evaluate a separate model for each k (106) persons at the data while holding out all (4) measurements of one person at the time
+Following estimates cross-validation models for Gamma RHS AR(1). Change the 'cvmodelpath' variable to match a path in your environment. The path should have approximately 3 x 10 x 5 x 480 Mb = 72 empty space.
 
-```{r nfold_holdout, echo=FALSE, eval=TRUE, message=FALSE}
+```{r 10-fold_holdout_gamma, echo=FALSE, eval=TRUE, message=FALSE}
 library(igraph)
 
-# Cross-validation models are stored separate folders, one for each patient.
+# Cross-validation models are stored in files at holdout-folders
 
-for (holdout_subject in levels(sysdimet$SUBJECT_ID))
+for (week in c(4,8,12))
 {
-  cvdir <- paste0("/media/jari/Jarin WD Passport/cvmodels/", holdout_subject)
-  
-  if (!dir.exists(cvdir))
+  for (holdout_suffix in as.character(0:9))
   {
-    dir.create(cvdir)
-  
-    holdout_index <- as.vector(as.numeric(sysdimet$SUBJECT_ID == holdout_subject))
-  
-    initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+    # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from 'week'
+    holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == week))
     
-    sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
-                                     inputdata = sysdimet,
-                                     targetdata = holdout_index,
-                                     predictor_columns = assumedpredictors, 
-                                     assumed_targets = assumedtargets, 
-                                     group_column = "SUBJECT_ID",
-                                     local_estimation = mebn.sampling,
-                                     local_model_cache = cvdir, 
-                                     stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv.stan",
-                                     reg_params = shrinkage_parameters,
-                                     normalize_values = TRUE)
-  
-    write.graph(sysdimet_gamma_ar1_rhs_cv, paste0(cvdir, "/subject_", holdout_subject, ".graphml", "graphml"))
+    # Change this path to match your environment
+    cvmodelpath <- "/media/jari/Jarin WD Passport"
+    
+    # This is relative path for model
+    cvdir <- paste0(cvmodelpath, "/cvmodels/week", week,"/holdout_", holdout_suffix)
+    
+    if (!dir.exists(cvdir))
+    {
+      dir.create(cvdir)
+    
+      initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+      sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                       inputdata = sysdimet,
+                                       targetdata = holdout_index,
+                                       predictor_columns = assumedpredictors, 
+                                       assumed_targets = assumedtargets, 
+                                       group_column = "SUBJECT_ID",
+                                       local_estimation = mebn.sampling,
+                                       local_model_cache = cvdir, 
+                                       stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv.stan",
+                                       reg_params = shrinkage_parameters,
+                                       normalize_values = TRUE)
+      
+      saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
+    }
   }
 }
 ```
 
+Following estimates only Normal distribution for blood insulin response. It is used as a replacement for Gamma model in Expfam RHS AR(1). This takes additional space of 3 x 10 x 1 x 480 Mb = 14.4 Gb.
 
-Holdout last observations for holdout-patients. Those are predicted in cross-validation.
-
-```{r 10-fold_holdout, echo=FALSE, eval=TRUE, message=FALSE}
+```{r 10-fold_holdout_normal_fsins, echo=FALSE, eval=TRUE, message=FALSE}
 library(igraph)
-
 # Cross-validation models are stored in holdout-folders
 
-for (holdout_suffix in as.character(0:9))
+fsins_only <- assumedtargets[assumedtargets$Name=="fsins",]
+
+for (week in c(4,8,12))
 {
-  # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from week 12
-  holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == 12))
-  cvdir <- paste0("/media/jari/Jarin WD Passport/cvmodels/week12/holdout_", holdout_suffix)
-  
-  if (!dir.exists(cvdir))
+  for (holdout_suffix in as.character(0:9))
   {
-    dir.create(cvdir)
+    # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from 'week'
+    holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == week))
+    
+    # Change this path to match your environment
+    cvmodelpath <- "/media/jari/Jarin WD Passport"
   
-    initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+    cvdir <- paste0(cvmodelpath, "/cvmodels/normal_fsins/week", week,"/holdout_", holdout_suffix)
     
-    sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
-                                     inputdata = sysdimet,
-                                     targetdata = holdout_index,
-                                     predictor_columns = assumedpredictors, 
-                                     assumed_targets = assumedtargets, 
-                                     group_column = "SUBJECT_ID",
-                                     local_estimation = mebn.sampling,
-                                     local_model_cache = cvdir, 
-                                     stan_model_file = "mebn/BLMM_gamma_ar1_rhs_cv.stan",
-                                     reg_params = shrinkage_parameters,
-                                     normalize_values = TRUE)
-    
-    saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
-  }
-}
-```
-
-Accuracy of predictions
-
-```{r}
-source("model_eval_functions.r")
-source("mebn/MEBN.r")
-
-localfit_directory <- "/media/jari/Jarin WD Passport/cvmodels/holdout_0"
-targetname <- "fshdl"
-
-target_blmm <- mebn.get_localfit(targetname, localfit_directory)
-
-# Predictions for week 12 of holdout patients
-ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
-
-pred_week12 <- as.vector(ms$summary[,1])
-
-holdout_subjects <- unique(sysdimet[endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix),]$SUBJECT_ID)
-
-true_response <- sysdimet %>%
-  filter(SUBJECT_ID %in% holdout_subjects) %>%
-  filter(WEEK == 12) %>%
-  select("fshdl")
-
-nrmse_rows <- mebn.NRMSE(pred_week12, true_response$fshdl, mean(true_response$fshdl))
-nrmse_rows
-nrmse <- mean(nrmse_rows)
-nrmse
-
-true_week8 <- sysdimet %>%
-  filter(SUBJECT_ID %in% holdout_subjects) %>%
-  filter(WEEK == 8) %>%
-  select("fshdl")
-
-true_week12 <- sysdimet %>%
-  filter(SUBJECT_ID %in% holdout_subjects) %>%
-  filter(WEEK == 12) %>%
-  select("fshdl")
-
-sign(true_week12$fshdl - true_week8$fshdl)
-
-sign(pred_week12 - true_week8$fshdl)
-
-(12-5)/12
-      
-```
-
-
-
-
-Next we can calculate NRMSE and classification metrics for cross-validated personal models
-
-```{r k-fold_nrmse, cache=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
-source("model_eval_functions.r")
-source("mebn/MEBN.r")
-
-# Array of MSE summaries for each patient
-
-if (file.exists("evaluations/NRMSE-array_MEBNCV.rds"))
-{
-  nrmse.arr <- readRDS("evaluations/NRMSE-array_MEBNCV.rds")
-} else {
-  patients <- length(levels(sysdimet$SUBJECT_ID))
-
-  nrmse.arr <- array(-1, 
-                   dim = c(1, nrow(assumedtargets)+2, patients),
-                   dimnames = list("NRMSE", c("model", as.vector(assumedtargets$Name), "mean"), levels(sysdimet$SUBJECT_ID)))
-
-  saveRDS(nrmse.arr, "evaluations/NRMSE-array_MEBNCV.rds")
-}
-
-for (subject in levels(sysdimet$SUBJECT_ID))
-{
-  stored.mat <- nrmse.arr[,,subject] 
-  
-  if (stored.mat[1] == -1)
-  {
-    nrmse.mat <- matrix(0, nrow=0,ncol=7)
-    
-    personal_nrmse <- matrix(0, nrow=0,ncol=5)
-    localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject, "/")
-    
-    if (file.exists(localfit_directory))
+    if (dir.exists(cvdir))
     {
-      print(subject)
-      
-      pred_response <- get_pred_response(localfit_directory)
-      
-      if (!is.null(pred_response))
-      {
-        true_response <- get_true_response_subj(subject)
+      dir.create(cvdir)
     
-        nrmse_rows <- mebn.NRMSE(pred_response, true_response, mean(true_response))
-        nrmse <- rowMeans(nrmse_rows)
-    
-        personal_nrmse <- rbind(personal_nrmse, nrmse)
-      }
+      initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+      
+      sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                       inputdata = sysdimet,
+                                       targetdata = holdout_index,
+                                       predictor_columns = assumedpredictors, 
+                                       assumed_targets = fsins_only, 
+                                       group_column = "SUBJECT_ID",
+                                       local_estimation = mebn.sampling,
+                                       local_model_cache = cvdir, 
+                                       stan_model_file = "mebn/BLMM_normal_ar1_rhs_cv.stan",
+                                       reg_params = shrinkage_parameters,
+                                       normalize_values = TRUE)
+      
+      saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
     }
-  
-    model_nrmse <- mean(colMeans(personal_nrmse))
-    nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1) RHS CV", round(colMeans(personal_nrmse), 3), round(model_nrmse, 3)))
-    
-    nrmse.arr[,,subject] <- nrmse.mat
-    
-    saveRDS(nrmse.arr, "evaluations/NRMSE-array_MEBNCV.rds")
-
-  } else {
-     print(paste0(subject, " is evaluated."))
   }
 }
-
 ```
 
+Full Bayesian models are now estimated. They contain also predictions for unseen holdout patients. These predictions are now gathered in array with dimensions (blood test x week x patient). For each patient there is a predicted value of every modeled blood test response on weeks 4, 8, and 12. These results are stored in evaluations-folder.
 
-```{r k-fold_eval, echo=FALSE, message=FALSE, warning=FALSE, eval=FALSE}
+Change cvmodelpath-variable to match your environment.
+
+```{r collect_personal_predictions}
 source("model_eval_functions.r")
+source("mebn/MEBN.r")
+library(dplyr)
+library(stringr)
 
-# Array of summaries for each patient
+# This code collects personal predictions of blood tests in different study weeks from holdout models
 
-if (file.exists("evaluations/Class-array_MEBNCV.rds"))
+# empty array with dimensions target,week,holdout
+patients <- length(levels(sysdimet$SUBJECT_ID))
+
+if (file.exists("evaluations/Gamma_pred_array.rds"))
 {
-  class.arr <- readRDS("evaluations/Class-array_MEBNCV.rds")
+  class.arr <- readRDS("evaluations/Gamma_pred_array.rds")
 } else {
-  patients <- length(levels(sysdimet$SUBJECT_ID))
-
   class.arr <- array(-1, 
-                   dim = c(nrow(assumedtargets), 4, patients),
-                   dimnames = list(assumedtargets$Name, c('week 4', 'week 8', 'week 12', '12 week change'), levels(sysdimet$SUBJECT_ID)))
+                   dim = c(nrow(assumedtargets), 3, patients),
+                   dimnames = list(assumedtargets$Name, c(4,8,12), levels(sysdimet$SUBJECT_ID)))
 
-  saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
+  saveRDS(class.arr, "evaluations/Gamma_pred_array.rds")
 }
 
-for (subject in levels(sysdimet$SUBJECT_ID))
+for (week in c(4,8,12)) 
 {
-  stored.mat <- class.arr[,,subject] 
-  
-  if (stored.mat[1,1] == -1)
+  for (holdout_suffix in as.character(0:9))
   {
-    class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-    
-    localfit_directory <- paste0("/media/jari/Jarin WD Passport/cvmodels/", subject, "/")
-    
-    if (file.exists(localfit_directory))
-    {
-      print(subject)
-      
-      pred_response <- get_pred_response(localfit_directory)
-      
-      if (!is.null(pred_response))
-      {
-        true_response <- get_true_response_subj(subject)
-      
-        pred_delta <- make_delta(pred_response)
-        true_delta <- make_delta(true_response)
-        
-        sign_matrix <- sign(pred_delta) == sign(true_delta)
-        avg_change <- sign(rowSums(true_response[,2:4])/3 - true_response[,1]) == sign(rowSums(pred_response[,2:4])/3 - pred_response[,1])
-        
-        class.mat <- cbind(sign_matrix[,2:4]*1, avg_change*1)
-        
-        class.arr[,,subject] <- class.mat
-      }
+      # Change this path to match your environment
+      cvmodelpath <- "/media/jari/Jarin WD Passport"
 
-      saveRDS(class.arr, "evaluations/Class-array_MEBNCV.rds")
-    }
-  } else {
-    print(paste0(subject, " is evaluated."))
-  }
+      cvdir <- paste0(cvmodelpath, "/cvmodels/week", week, "/holdout_", holdout_suffix)
   
+      for (targetname in assumedtargets$Name)
+      {
+        print(paste0(week, "/", holdout_suffix, "/", targetname))
+        
+        target_blmm <- mebn.get_localfit(targetname, cvdir)
+  
+        ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+          
+        # Insert predictions to array
+        holdout_subjects <- unique(sysdimet[endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix),]$SUBJECT_ID)
+        
+        # Extract prediction for all the holdout subjects for week and target
+        pred_response <- as.vector(ms$summary[1:length(holdout_subjects),c(1)])
+  
+        # Insert to array
+        class.arr[targetname,as.character(week),holdout_subjects] <- pred_response
+        
+        saveRDS(class.arr, "evaluations/Gamma_pred_array.rds")
+      }
+    }
 }
+```
+
+Next the predictions are gathered for Expfam-model. Gamma-predictions are taken as a starting point and blood insulin predictions are replaced with Normal-distribution model.
+
+Change cvmodelpath-variable to match your environment.
+
+```{r collect_personal_predictions_ef}
+# expfam
+class.arr <- readRDS("evaluations/Gamma_pred_array.rds")
+
+for (week in c(4,8,12)) 
+{
+  for (holdout_suffix in as.character(0:9))
+  {
+      # Change this path to match your environment
+      cvmodelpath <- "/media/jari/Jarin WD Passport"
+      
+      cvdir <- paste0(cvmodelpath, "/cvmodels/normal_fsins/week", week, "/holdout_", holdout_suffix)
+  
+      targetname <- "fsins"
+      print(paste0(week, "/", holdout_suffix, "/", targetname))
+      
+      target_blmm <- mebn.get_localfit(targetname, cvdir)
+
+      ms <- rstan::summary(target_blmm, pars=c("Y_pred"), probs=c(0.10, 0.90), na.rm = TRUE)
+        
+      # Insert predictions to array
+      holdout_subjects <- unique(sysdimet[endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix),]$SUBJECT_ID)
+      
+      # Extract prediction for all the holdout subjects for week and target
+      pred_response <- as.vector(ms$summary[1:length(holdout_subjects),c(1)])
+
+      # Insert to array
+      class.arr[targetname,as.character(week),holdout_subjects] <- pred_response
+      
+      saveRDS(class.arr, "evaluations/Expfam_pred_array.rds")
+    }
+}
+
 
 ```
 
+Finally, the gathered predictions are compared with true values. Both NRMSE metrics and classification tests are computed for every patient and for every blood test. Means of these metrics are stored in blood test level and in overall model level. These summary matrices are stored in evaluations-folder and included in the main notebook. 
 
+```{r NRMSE_and_accuracy_evaluation}
+source("model_eval_functions.r")
 
-Then we summarize the results of k-fold accuracy cross-validation in a matrix for the main document
+gamma_pred.arr <- readRDS("evaluations/Gamma_pred_array.rds")
+expfam_pred.arr <- readRDS("evaluations/Expfam_pred_array.rds")
 
+patients <- length(levels(sysdimet$SUBJECT_ID))
 
-```{r nrmse-summary, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE}
+gamma_nrmse.arr <- array(0, 
+                         dim = c(nrow(assumedtargets), 4, patients),
+                         dimnames = list(assumedtargets$Name, c('4', '8', '12', 'mean'), levels(sysdimet$SUBJECT_ID)))
 
-# Separated personal predictions
-nrmse.arr <- readRDS("evaluations/NRMSE-array_MEBNCV.rds")
+expfam_nrmse.arr <- array(0, 
+                         dim = c(nrow(assumedtargets), 4, patients),
+                         dimnames = list(assumedtargets$Name, c('4', '8', '12', 'mean'), levels(sysdimet$SUBJECT_ID)))
 
-# Add to other evaluations
-nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
+gamma_class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=3)
+expfam_class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=3)
 
-# Summary vector
-nrmse.sum <- rep(0, 6)
 number_of_preds <- 0
+amount_subjects <- length(levels(sysdimet$SUBJECT_ID))
 
-# Add all the personal prediction matrices
 for (subject in levels(sysdimet$SUBJECT_ID))
 {
-  personal_nrmse <- as.numeric(nrmse.arr[,2:7,subject])
-
-  if (personal_nrmse[1] != -1 && personal_nrmse[1] != "NaN") {
     number_of_preds <- number_of_preds + 1
-    nrmse.sum <- nrmse.sum + personal_nrmse
-  }
+
+    # Get true values and different predictions
+    gamma_response <- gamma_pred.arr[,,subject]
+    expfam_response <- expfam_pred.arr[,,subject]
+    true_response <- get_true_response_subj(subject)[,2:4]
+    true_response0 <- get_true_response_subj(subject)
+    
+    # Classification accuracy
+    
+    true_delta <- make_delta(true_response0, true_response0)
+    gamma_delta <- make_delta(true_response0, cbind(0, gamma_response))
+    expfam_delta <- make_delta(true_response0, cbind(0, expfam_response))
+
+    gamma_sign_matrix <- sign(gamma_delta) == sign(true_delta)
+    expfam_sign_matrix <- sign(expfam_delta) == sign(true_delta)
+    
+    gamma_class.mat <- gamma_class.mat + gamma_sign_matrix[,2:4]*1
+    expfam_class.mat <- expfam_class.mat + expfam_sign_matrix[,2:4]*1
+
+    # NRMSE
+    
+    gamma_nrmse_rows <- mebn.NRMSE(gamma_response, true_response, mean(true_response))
+    gamma_nrmse <- rowMeans(gamma_nrmse_rows)
+
+    expfam_nrmse_rows <- mebn.NRMSE(expfam_response, true_response, mean(true_response))
+    expfam_nrmse <- rowMeans(expfam_nrmse_rows)
+
+    gamma_nrmse.arr[,,subject] <- cbind(gamma_nrmse_rows, gamma_nrmse)
+    expfam_nrmse.arr[,,subject] <- cbind(expfam_nrmse_rows, expfam_nrmse)
 }
 
-nrmse.sum <- nrmse.sum/number_of_preds
+# Classification accuracy
 
-nrmse.mat <- rbind(nrmse.mat, c("Gamma AR(1) RHS CV", round(nrmse.sum,3)))
+gamma_class_sum.mat <- gamma_class.mat/number_of_preds * 100
+expfam_class_sum.mat <- expfam_class.mat/number_of_preds * 100
+
+gamma_class_sum.mat <- cbind(gamma_class_sum.mat, rowMeans(gamma_class_sum.mat[,1:3]))
+colnames(gamma_class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'mean accuracy')
+gamma_class_sum.mat <- round(gamma_class_sum.mat, 0)
+saveRDS(gamma_class_sum.mat, "evaluations/GammaCV_accuracy_matrix.rds")
+
+expfam_class_sum.mat <- cbind(expfam_class_sum.mat, rowMeans(expfam_class_sum.mat[,1:3]))
+colnames(expfam_class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'mean accuracy')
+expfam_class_sum.mat <- round(expfam_class_sum.mat, 0)
+saveRDS(expfam_class_sum.mat, "evaluations/ExpfamCV_accuracy_matrix.rds")
+
+# NRMSE
+
+gamma_eval <- c("Gamma AR(1) RHS CV", round(rowMeans(gamma_nrmse.arr[,4,]), 3), round(mean(rowMeans(gamma_nrmse.arr[,4,])), 3))
+expfam_eval <- c("EXPFAM AR(1) RHS CV", round(rowMeans(expfam_nrmse.arr[,4,]), 3), round(mean(rowMeans(expfam_nrmse.arr[,4,])), 3))
+
+nrmse.mat <- readRDS("evaluations/NRMSE-matrix2.rds")
+
+nrmse.mat <- rbind(nrmse.mat, gamma_eval)
+nrmse.mat <- rbind(nrmse.mat, expfam_eval)
+rownames(nrmse.mat) <- rep("", nrow(nrmse.mat))
 
 saveRDS(nrmse.mat, "evaluations/NRMSE-matrix3.rds")
-```
-
-```{r k-fold-summary, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE}
-
-# Separated personal predictions
-class.arr <- readRDS("evaluations/Class-array_MEBNCV.rds")
-
-# Summary matrix
-class.mat <- matrix(0, nrow=nrow(assumedtargets),ncol=4)
-rownames(class.mat) <- assumedtargets$Name
-
-number_of_preds <- 0
-
-# Add all the personal prediction matrices
-for (subject in levels(sysdimet$SUBJECT_ID))
-{
-  personal_pred <- class.arr[,,subject]
-
-  if (personal_pred[1,1] != -1) {
-    number_of_preds <- number_of_preds + 1
-    class.mat <- class.mat + personal_pred
-  }
-}
-
-class_sum.mat <- class.mat/number_of_preds * 100
-
-class_sum.mat <- cbind(class_sum.mat, rowMeans(class_sum.mat[,1:3]))
-colnames(class_sum.mat) <- c('0 to 4 weeks', '4 to 8 weeks', '8 to 12 weeks', 'avg. 12 week change', 'avg. change acc.')
-
-class_sum.mat <- round(class_sum.mat, 0)
-class_sum.mat
-
-#saveRDS(class_sum.mat, "evaluations/MEBNCV-matrix.rds")
-
 ```

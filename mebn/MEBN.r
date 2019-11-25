@@ -5,21 +5,6 @@
 # Jari Turkia
 #
 
-##################################################
-
-mebn.markov_blanket <- function(g, target)
-{
-  from.parents.e <- E(g)[to(target)]
-  to.children.e <- E(g)[from(target)]
-  children.v <- V(g)[get.edges(g, to.children.e)[, 2]]
-  total.e <- c(from.parents.e, to.children.e, from.spouses.to.children.e)
-  delete.e <- E(g)[setdiff(E(g), total.e)]
-  g.simple <- delete.edges(g, delete.e)
-  g.simple
-}
-
-##################################################
-
 # Normalized root mean squared error
 mebn.NRMSE <- function(pred_value, true_value, mean_value)
 {
@@ -41,8 +26,6 @@ mebn.new_graph_with_randomvariables <- function(datadesc)
   
   next_order <- max(datadesc$Order)
   assumed_targets <- datadesc[datadesc$Order==next_order,]
-  
-  # TODO: Get shape?
   
   # Add nodes to reaction graph for all the random variables  
   reaction_graph <- reaction_graph + vertices(as.vector(assumed_targets$Name), 
@@ -113,13 +96,6 @@ mebn.fully_connected_bipartite_graph <- function(datadesc)
       reaction_graph <- reaction_graph + edge(c(p, t))
   
   return(reaction_graph)
-}
-
-##################################################
-
-mebn.posterior <- function(igraph_node)
-{
-
 }
 
 ##################################################
@@ -199,9 +175,7 @@ mebn.scale_gaussians <- function(r, data, datadesc)
   {
     if (sum(s) != 0)
     {
-      # TODO: Scale also returns the scaling factor. Store it to restore the original scale.
       s <- mebn.standardize(s, mean(s), sd(s))
-      #s <- mebn.normalize(s, min(s), max(s))
     }
   }
   
@@ -226,10 +200,6 @@ mebn.set_model_parameters <- function(predictor_columns, target_column, group_co
     
     # append intercept 
     X <- cbind(rep(1,N), X)
-    
-    #Y <- scale(inputdata[target_name][,], center = FALSE, scale = TRUE)[,1]
-    #Y <- mebn.scale(inputdata[target_name], sd(inputdata[target_name][,]))[,]  
-    #Y <- mebn.normalize(inputdata[target_name], min(inputdata[target_name][,]), max(inputdata[target_name][,]))[,]  
     Y <- inputdata[target_name][,]
   }
   else
@@ -305,113 +275,6 @@ mebn.set_prediction_parameters <- function(predictor_columns, target_column, inp
 
 ##################################################
 
-mebn.set_model_parameters2 <- function(predictor_columns, target_column, group_column, inputdata, targetdata = NULL, normalize_values, reg_params = NULL)
-{
-  ident <- function(x) { return (x) }
-  predictors <- inputdata[as.vector(predictor_columns$Name)]
-  
-  target_name <- as.vector(target_column$Name)
-  
-  prior_sigma <- rep(-1, nrow(predictor_columns))
-  dim(prior_sigma) <- nrow(predictor_columns)
-  prior_mean <- rep(0, nrow(predictor_columns))
-  dim(prior_mean) <- nrow(predictor_columns)
-  
-  # Set informative priors 
-  if (!is.na(predictor_columns$Lowerbound) && !is.na(predictor_columns$Upperbound))
-  {  
-    prior_sigma <- c(predictor_columns$Upperbound - predictor_columns$Lowerbound)
-    prior_mean <- c(predictor_columns$Lowerbound + prior_sigma / 2)
-    
-    dim(prior_sigma) <- length(prior_sigma)
-    dim(prior_mean) <- length(prior_mean)
-  }
-  
-  use_holdout_data <- 0
-  N_new <- 0
-  X_new <- matrix(NA, nrow=0, ncol=ncol(assumedpredictors))
-  Y_new <- c()
-  J_new <- 0
-  Z_new <- 0
-  
-  if (!is.null(targetdata))
-  {
-    use_holdout_data <- 1
-    N_new <- nrow(targetdata)
-    J_new <- length(levels(targetdata[[group_column]]))
-  }
-  
-  # Scale if the predictor is Gaussian
-  N <- nrow(inputdata)
-  
-  if (normalize_values == TRUE)
-  {
-    X <- sapply(1:nrow(assumedpredictors), mebn.scale_gaussians, data = inputdata, datadesc = assumedpredictors)
-    
-    # append intercept 
-    X <- cbind(rep(1,N), X)
-    
-    #Y <- scale(inputdata[target_name][,], center = FALSE, scale = TRUE)[,1]
-    #Y <- mebn.scale(inputdata[target_name], sd(inputdata[target_name][,]))[,]  
-    #Y <- mebn.normalize(inputdata[target_name], min(inputdata[target_name][,]), max(inputdata[target_name][,]))[,]  
-    Y <- inputdata[target_name][,]
-    
-    # Prepare training data also
-    if (use_holdout_data == 1)
-    {
-      # note: X_new does not need intercept column
-      X_new <- sapply(1:nrow(assumedpredictors), mebn.scale_gaussians, data = targetdata, datadesc = assumedpredictors)
-      Y_new <- targetdata[target_name][,]
-      
-      # but Z_new does
-      Z_new <- cbind(rep(1,N_new), X_new)
-    }
-  }
-  else
-  {
-    X <- cbind(rep(1,N), apply(predictors, 2, ident))
-    Y <- inputdata[target_name][,]
-    
-    if (use_holdout_data == 1)
-    {
-      # note: X_new does not need intercept column
-      X_new <- apply(predictors, 2, ident)
-      Y_new <- targetdata[target_name][,]
-      
-      # but Z_new does
-      Z_new <- cbind(rep(1,N_new), X_new)
-    }    
-  }
-
-  params <- within(list(),
-                   {
-                     N <- N
-                     X <- X
-                     p <- k <- ncol(X)               # all predictors may have random effects
-                     # Mean and variance of Gaussian prior predictors
-                     X_prior_sigma <- prior_sigma    # no prior for the intercept 
-                     X_prior_mean <- prior_mean      # sigma < 0 means noninformative prior
-                     Y <- Y
-                     Z <- X     
-                     N_new <- N_new
-                     X_new <- X_new
-                     Z_new <- Z_new
-                     Y_new <- Y_new
-                     predict_with_holdout <- use_holdout_data
-                     J <- length(levels(inputdata[[group_column]]))
-                     J_new <- J_new
-                     group <- as.integer(inputdata[[group_column]])
-                     group_new <- as.integer(targetdata[[group_column]])
-                     offset <- 15
-                   })
-  
-  params <- c(params, reg_params)
-  
-  return(params)
-}
-
-##################################################
-
 mebn.localsummary <- function(fit)
 {
   #draws <- extract(fit)
@@ -434,10 +297,6 @@ mebn.localsummary <- function(fit)
       std_error_lCI <- round(ms$summary[rownames(ms$summary) %in% "sigma_e",],5)[4]
       std_error_uCI <- round(ms$summary[rownames(ms$summary) %in% "sigma_e",],5)[5]
     })
-  
-  # Create matrix D
-  #sdM <- diag(ModelSummary$ranef_sd)
-  #ModelSummary$D <- sdM %*% ModelSummary$C %*% t(sdM)
   
   return(ModelSummary)
 }
@@ -489,29 +348,6 @@ mebn.get_localfit <- function(target_name, local_model_cache = "models", mem_cac
   }
   
   return(localfit)
-}
-
-##################################################
-
-mebn.get_parents <- function(g, nodename)
-{
-  vindex <- as.numeric(V(g)[nodename])
-  parents <- neighbors(g, vindex, mode = c("in"))
-  
-  return(parents)
-}
-
-##################################################
-
-mebn.get_parents_with_type <- function(g, nodename, type)
-{
-  vindex <- as.numeric(V(g)[nodename])
-  parents <- neighbors(g, vindex, mode = c("in"))
-  
-  # filter by type
-  parents <- parents[parents$type==type]
-  
-  return(parents)
 }
 
 ##################################################
@@ -573,121 +409,6 @@ mebn.LOO_comparison <- function(target_variables, graphdir1, graphdir2)
   }
   
   return(comparison)
-}
-
-##################################################
-
-mebn.LOO_comparison3 <- function(target_variables, graphdir1, graphdir2, graphdir3, N)
-{
-  library(loo)
-  
-  comparison<-data.frame(matrix(nrow=nrow(target_variables), ncol=7))
-  colnames(comparison) <- c("distribution", graphdir1, "bad_k", graphdir2, "bad_k", graphdir3, "bad_k")
-  
-  n <- 1
-  for (targetname in target_variables$Name)
-  {
-    # Get models to compare
-    m1 <- mebn.get_localfit(paste0(graphdir1, "/", targetname))
-    m2 <- mebn.get_localfit(paste0(graphdir2, "/", targetname))
-    m3 <- mebn.get_localfit(paste0(graphdir3, "/", targetname))
-    
-    # Statistics for model 1
-    m1_loglik <- extract_log_lik(m1, merge_chains = FALSE)
-    
-    if (exists("m1_rel_n_eff")) remove(m1_rel_n_eff)
-    if (exists("m1_loo")) remove(m1_loo)
-    
-    if (!any(is.na(exp(m1_loglik))))
-    {
-      m1_rel_n_eff <- relative_eff(exp(m1_loglik))
-      suppressWarnings(m1_loo <- loo(m1_loglik, r_eff = m1_rel_n_eff, cores = 4))
-    }
-    
-    # Statistics for model 2
-    m2_loglik <- extract_log_lik(m2, merge_chains = FALSE)
-    
-    if (exists("m2_rel_n_eff")) remove(m2_rel_n_eff)
-    if (exists("m2_loo")) remove(m2_loo)
-    
-    if (!any(is.na(exp(m2_loglik))))
-    {
-      m2_rel_n_eff <- relative_eff(exp(m2_loglik))
-      suppressWarnings(m2_loo <- loo(m2_loglik, r_eff = m2_rel_n_eff, cores = 4))
-    }
-
-    # Statistics for model 3
-    m3_loglik <- extract_log_lik(m3, merge_chains = FALSE)
-    
-    if (exists("m3_rel_n_eff")) remove(m3_rel_n_eff)
-    if (exists("m3_loo")) remove(m3_loo)
-    
-    if (!any(is.na(exp(m3_loglik))))
-    {
-      m3_rel_n_eff <- relative_eff(exp(m3_loglik))
-      suppressWarnings(m3_loo <- loo(m3_loglik, r_eff = m3_rel_n_eff, cores = 4))
-    }
-    
-    comparison[n,1] <- targetname
-    
-    if (exists("m1_loo")) {
-      comparison[n,2] <- m1_loo$estimates[1,2]
-      
-      high_pareto_k <- length(pareto_k_ids(m1_loo, threshold = 0.7))
-      high_k_percent <- high_pareto_k/N*100
-      
-      comparison[n,3] <- high_k_percent
-    }
-    else
-    {
-      comparison[n,2] <- "NA"
-      comparison[n,3] <- "NA"
-    }
-    
-    if (exists("m2_loo"))
-    {
-      comparison[n,4] <- m2_loo$estimates[1,2]
-      
-      high_pareto_k <- length(pareto_k_ids(m2_loo, threshold = 0.7))
-      high_k_percent <- high_pareto_k/N*100
-      
-      comparison[n,5] <- high_k_percent
-    }
-    else
-    {
-      comparison[n,4] <- "NA"
-      comparison[n,5] <- "NA"
-    }
-
-    if (exists("m3_loo"))
-    {
-      comparison[n,6] <- m3_loo$estimates[1,2]
-      
-      high_pareto_k <- length(pareto_k_ids(m3_loo, threshold = 0.7))
-      high_k_percent <- high_pareto_k/N*100
-      
-      comparison[n,7] <- high_k_percent
-    }
-    else
-    {
-      comparison[n,6] <- "NA"
-      comparison[n,7] <- "NA"
-    }
-
-    n <- n + 1
-  }
-  
-  return(comparison)
-}
-
-##################################################
-mebn.linpred <- function(X, beta, Z, b, g_alpha)
-{
-  
-  mu <- beta %*% X + b %*% Z
-  
-  # ?? 
-  return (dgamma(g_alpha, g_alpha(mu)))
 }
 
 ##################################################
@@ -935,28 +656,6 @@ mebn.read_gexf <- function(gefx_path)
   ig <- rgexf::gexf.to.igraph(gexf_graph)
   
   return(ig)
-}
-
-###################################
-
-mebn.BetaLevelTest <- function(LocalModelSummary, PredictorId)
-{
-  abs(LocalModelSummary$fixef[PredictorId]) > 0.001
-}
-
-###################################
-
-mebn.RanefTest <- function(localsummary, PredictorId)
-{
-  abs(localsummary$fixef[PredictorId]) > 0.001 ||
-    abs(localsummary$ranef_sd[PredictorId]) > 0.001
-}
-
-###################################
-
-mebn.PersonalSignificanceTest <- function(personal_coef)
-{
-  abs(personal_coef) > 0.001
 }
 
 ##################################################
@@ -1499,23 +1198,3 @@ mebn.compare_typicals <- function(bn1, bn2)
   
   return(typical_effects)
 }
-
-##################################################
-
-mebn.set_evidence <- function(reaction_graph, evidence)
-{
-  # Values of nodes (like optimal blood test values) can be set to network
-  
-}
-
-##################################################
-
-mebn.evaluate <- function(reaction_graph, targets)
-{
-  # After the evidence values have been set, the rest of the network can be evaluated 
-  
-  # Stan sampling?
-  
-}
-
-##################################################

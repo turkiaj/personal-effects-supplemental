@@ -1,5 +1,6 @@
 ---
-title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network, Supplementary Materials"
+title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
+subtitle: "Supplementary Materials"
 author:
 - Jari Turkia, jari.turkia@cgi.com
 - University of Eastern Finland
@@ -82,7 +83,7 @@ ldlplot <- ggplot() +
 insplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsins, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
   scale_x_discrete(limits=c(0,4,8,12)) +
-  labs(x = "Week", y = "Insulin (mmol/l)") + theme(axis.title.x = element_blank())
+  labs(x = "Week", y = "Insulin (mU/l)") + theme(axis.title.x = element_blank())
 
 kolplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fskol, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
@@ -274,8 +275,8 @@ The predictive ability of the model might be reduced by overfitting to small nua
 shrinkage_parameters <- within(list(),
 {
     scale_icept  <- 1         # prior std for the intercept
-    scale_global <- 0.02428   # scale for the half-t prior for tau: 
-                              # ((p0=11) / (D=22-11)) * (sigma = 1 / sqrt(n=106*4))
+    scale_global <- 0.02266   # scale for the half-t prior for tau: 
+                              # ((p0=7) / (D=22-7)) * (sigma = 1 / sqrt(n=106*4))
     nu_global    <- 1         # degrees of freedom for the half-t priors for tau
     nu_local     <- 1         # degrees of freedom for the half-t priors for lambdas
     slab_scale   <- 1         # slab scale for the regularized horseshoe
@@ -556,24 +557,24 @@ write.graph(sysdimet_expfam_ar1_rhs, "graphs/sysdimet_expfam_ar1_rhs.graphml", "
 
 ## Predictive accuracy cross-validated MEBN 
 
-Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. During the cross-validation we have estimated a separated model for each of the 106 patients with the data from other 105 patient. Prediction is then made for the left out patient.
+Execution of the k-fold cross-validation is done in a separated notebook (cross-validation.Rmd) as it takes substantial amount of time to run. The results are stored and load for analysis here. For the cross-validation we partitioned the observations in data to 12 partitions for weeks 4,8 and 12. Then each of the data partitions in turn is left out from model estimation. This allows us to make predictions for unseen data. 
 
-```{r model_mse3}
+Each of the model candidates are compared here with a normalized root mean squared error (NRMSE) and last final versions (Gamma AR(1) RHS CV and Expfam AR(1) RHS CV) are evaluated with the cross-validation.
+
+```{r model_mse3, echo=FALSE}
 # Cross-validation.Rmd adds CV evaluations to NRMSE-matrix3.rds
 ```
-
-Following table summarizes the prediction accuracy with mean squared error 
 
 ```{r model_nrmse2, echo=FALSE, message=FALSE, warning=FALSE}
 nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
 
-kable(nrmse.mat) %>%
-  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-  row_spec(0,bold=TRUE)
-
-#kable(nrmse.mat, "latex", booktabs = T, caption = "") %>%
-#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#kable(nrmse.mat) %>%
+#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
+
+kable(nrmse.mat, "latex", booktabs = T, caption = "") %>%
+  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
 
 ```
 
@@ -585,8 +586,7 @@ nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
 nrmse.df <- data.frame(nrmse.mat[,1])
 
 # model is a string factors, NRMSEs are doubles
-#nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS")))
-nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS", "Gamma AR(1) RHS CV")))
+nrmse.df$model <- factor(nrmse.mat[,1], levels = rev(c("Normal","Gamma","Gamma AR(1)","Gamma AR(1) RHS","EXPFAM AR(1)","EXPFAM AR(1) RHS", "Gamma AR(1) RHS CV", "EXPFAM AR(1) RHS CV")))
 nrmse.df <- cbind(nrmse.df, apply(nrmse.mat[,2:7], 2, as.numeric))[,2:8]
 
 #label.df <- as.data.frame(paste0(colnames(nrmse.mat)[2:7], " ", sprintf(as.numeric(nrmse.mat[6,2:7]), fmt = '%#.3f')))
@@ -602,9 +602,9 @@ ggplot(nrmse.df, show.legend = FALSE) +
   geom_line(aes(y = fskol, x = model, group=1), size=0.3) +
   geom_line(aes(y = fpgluk, x = model, group=1), size=0.3) +
   geom_line(aes(y = mean, x = model, group=1), size=1) +
-  geom_text(data = label.df, aes(label = label, x = "Gamma AR(1) RHS CV", y = value, hjust = .4, vjust = (label == "fpgluk")*1.1+1.2), size = 3) +
-  scale_y_continuous(trans="log10") +
-  labs(x = "", y = "Log(NRMSE)") + 
+  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS CV", y = value, hjust = .2, vjust = (label == "fpgluk")*1.0+1.0), size = 3) +
+  scale_y_continuous() +
+  labs(x = "", y = "NRMSE") + 
   coord_flip() +
   theme_bw() +
   theme(axis.text.x=element_text(size=rel(0.9)), plot.margin = margin(0,3,0,0)) 
@@ -725,7 +725,7 @@ colnames(mebn_rhs.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_rhs.df)
 
 # Add MEBN CV for comparison
-mebn_cv.mat <- readRDS("evaluations/MEBNCV-matrix.rds")
+mebn_cv.mat <- readRDS("evaluations/GammaCV_accuracy_matrix.rds")
 mebn_cv.df <- as.data.frame(mebn_cv.mat[,4]-2)
 mebn_cv.df$method <- "MEBN RHS CV"
 colnames(mebn_cv.df) <- c("accuracy","method")
@@ -749,18 +749,17 @@ ggplot() +
 
 ```
 
-
 ```{r model_summary, echo=FALSE, message=FALSE, warning=FALSE}
 
 # Load in-sample MEBN first
-class_sum.mat <- readRDS(file="evaluations/Class-matrix1.rds")
+class_sum.mat <- readRDS(file="evaluations/GammaCV_accuracy_matrix.rds")
 
 # Add XGBoost
 #class_sum.mat <- rbind(class_sum.mat, xgboost.mat)
 
-class_sum.mat[,1:5] <- paste0(class_sum.mat[,1:5], "%")
+class_sum.mat[,1:4] <- paste0(class_sum.mat[,1:4], "%")
 
-#kable(class_sum.mat) %>%
+#kable(class_sum.mat, caption = "Predictive accuracy percents for correct direction of change") %>%
 #  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
 
@@ -1340,6 +1339,8 @@ pe <- rbind(pe, personal_effect("ligniini_fsins", 1, personal_graph1))
 pe <- rbind(pe, personal_effect("ligniini_fsins", 2, personal_graph2))
 pe <- rbind(pe, personal_effect("cvit_fsins", 1, personal_graph1))
 pe <- rbind(pe, personal_effect("cvit_fsins", 2, personal_graph2))
+pe <- rbind(pe, personal_effect("dvit_fsins", 1, personal_graph1))
+pe <- rbind(pe, personal_effect("dvit_fsins", 2, personal_graph2))
 pe <- rbind(pe, personal_effect("energia_fsins", 1, personal_graph1))
 pe <- rbind(pe, personal_effect("energia_fsins", 2, personal_graph2))
 pe <- rbind(pe, personal_effect("epa_fsins", 1, personal_graph1))
@@ -1347,9 +1348,9 @@ pe <- rbind(pe, personal_effect("epa_fsins", 2, personal_graph2))
 
 colnames(pe)<-c("Patient", "Effect", "Lower-CI", "Mean value", "Upper-CI")
 
-#kable(pe) %>%
-#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-#  row_spec(0,bold=TRUE)
+kable(pe) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
+  row_spec(0,bold=TRUE)
 
 #kable(pe, "latex", booktabs = T, caption = "") %>%
 #  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
