@@ -268,7 +268,7 @@ saveRDS(eval.mat, "evaluations/xgboost-cv-mat.rds")
 eval.mat
 ```
 
-Without cross-validation
+Let us compare to evaluation without hyperparameter tuning and without cross-validation
 
 ```{r}
 library(xgboost)
@@ -337,6 +337,8 @@ for (target in assumedtargets$Name)
 }  
 
 saveRDS(eval.mat, "evaluations/xgboost-nocv-mat.rds")
+
+# Accuracy is significantly lower
 eval.mat
 ```
 

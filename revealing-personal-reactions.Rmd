@@ -29,6 +29,9 @@ fixed_seed <- 678
 
 # Load common MEBN package
 source("mebn/MEBN.r")
+
+# Online version (TRUE) uses color images while (FALSE) renders exact figures for the article 
+RenderArticleFigures <- FALSE
 ```
 
 In this work we propose a Bayesian network as an appealing way to model and predict the effects of nutrition. The Bayesian network are directed graphical models where nodes of the graph are random variables and the edges between the nodes indicate the effects between variables. In the nutritional modelling we assign the amount of nutrients at the person's diet and the indicators of person's well-being as those random variables, and we study the effects between them. The goal is then to find the connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
@@ -52,7 +55,7 @@ assumedtargets <- datadesc[datadesc$Order==200,]
 
 Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are shown at the plot here for clarity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
 
-```{r spagettiplot_fshdl, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
+```{r spagettiplot_data, echo=FALSE, warning=FALSE}
 library(ggplot2)
 library(gridExtra)
 library(grid)
@@ -61,6 +64,10 @@ plot_patients_index <- seq(1, length(levels(sysdimet$SUBJECT_ID)), 5)
 plot_patients <- levels(sysdimet$SUBJECT_ID)[plot_patients_index]
 
 sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
+```
+
+```{r spagettiplot_fshdl, eval = RenderArticleFigures, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
+# Fig. 1 in article
 
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
@@ -74,6 +81,10 @@ hdlplot
 
 
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=7, fig.width=6, message=FALSE}
+hdlplot <- ggplot() +
+  geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
+  scale_x_discrete(limits=c(0,4,8,12)) +
+  labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 ldlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsldl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
@@ -582,7 +593,6 @@ kable(nrmse.mat, "latex", booktabs = T, caption = "") %>%
 library(ggplot2)
 
 nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
-#nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix2.rds")
 nrmse.df <- data.frame(nrmse.mat[,1])
 
 # model is a string factors, NRMSEs are doubles
@@ -780,7 +790,8 @@ Besides the random variables, the graph also includes the regression coefficient
 source("mebn/MEBN.r")
 require(igraph)
 sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
-graph_layout <- mebn.plot_typical_effects(sysdimet_expfam_ar1, 20)
+
+graph_layout <- mebn.plot_typical_effects(sysdimet_expfam_ar1, 20, graph_layout = NULL, colorImage = !RenderArticleFigures)
 ```
 
 ```{r typical_nonshrinked, echo=FALSE, message=FALSE, eval=TRUE}
@@ -1320,10 +1331,10 @@ personal_graph1 <- read.graph("graphs/personal_insample_graph_s01.graphml", "gra
 personal_graph2 <- read.graph("graphs/personal_insample_graph_s104.graphml", "graphml")
 
 par(mfrow=c(2,1))
-layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout)
-title("Patient 1 from cluster 3",cex.main=0.5)
-layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout)
-title("Patient 2 from cluster 2",cex.main=0.5)
+layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout, colorImage = !RenderArticleFigures)
+title("Patient 1 from cluster 3",cex.main=0.6)
+layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout, colorImage = !RenderArticleFigures)
+title("Patient 2 from cluster 2",cex.main=0.6)
 ```
 
 ```{r, echo=FALSE}

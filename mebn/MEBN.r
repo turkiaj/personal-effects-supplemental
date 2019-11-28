@@ -891,7 +891,7 @@ mebn.personal_graph <- function(person_id, reaction_graph, predictor_columns, as
 
 ##################################################
 
-mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout = NULL)
+mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout = NULL, colorImage = FALSE)
 {
   library(igraph)
   
@@ -927,18 +927,23 @@ mebn.plot_typical_effects <- function(reaction_graph, top_effects, graph_layout 
   V(visual_graph)[V(visual_graph)$type == "100"]$label.degree = pi # left side
   V(visual_graph)[V(visual_graph)$type == "200"]$label.degree = 0 # right side
   
-  # Color and size encoding for edges according to beta coefficient
-  #E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
-  #E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
-  #E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
-  #E(visual_graph)[E(visual_graph)$weight < 0]$lty=1
+  if (colorImage)
+  {
+    # Color and size encoding for edges according to beta coefficient
+    
+    E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
+    E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
+    E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
+    E(visual_graph)[E(visual_graph)$weight < 0]$lty=1
 
-  # Black and white
+  } else {
+    # Black and white
+    
+    E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
+    E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
+  }
   
-  E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
-  E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
-
-    E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
+  E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
 
   plot(visual_graph, 
        layout=graph_layout, 
@@ -975,7 +980,7 @@ mebn.layout_bipartite_horizontal <- function(layout_graph, rank_condition)
 
 ##################################################
   
-mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout = NULL, plot_title="")
+mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout = NULL, plot_title="", colorImage = FALSE)
 {
   library(igraph)
   
@@ -1014,11 +1019,22 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
   V(visual_graph)[V(visual_graph)$type == "100"]$label.degree = pi # left side
   V(visual_graph)[V(visual_graph)$type == "200"]$label.degree = 0 # right side
   
-  # Color and size encoding for edges according to beta + b coefficients
-  E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
-#  E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
-  E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
-#  E(visual_graph)[E(visual_graph)$weight < 0]$lty=5
+  if (colorImage)
+  {
+    # Color and size encoding for edges according to beta coefficient
+    
+    E(visual_graph)[E(visual_graph)$weight > 0]$color="#D01C1F"
+    E(visual_graph)[E(visual_graph)$weight > 0]$lty=1
+    E(visual_graph)[E(visual_graph)$weight < 0]$color="#4B878B"
+    E(visual_graph)[E(visual_graph)$weight < 0]$lty=1
+    
+  } else {
+    # Black and white
+    
+    E(visual_graph)[E(visual_graph)$weight > 0]$color="#444444"
+    E(visual_graph)[E(visual_graph)$weight < 0]$color="#AAAAAA"
+  }  
+  
   E(visual_graph)$width = abs(E(visual_graph)$weight) * 6
   
   plot(visual_graph, 
@@ -1031,7 +1047,7 @@ mebn.plot_personal_effects <- function(personal_graph, top_effects, graph_layout
        edge.arrow.width=1,
        curved = 0,
        margin=0,
-       layout.par = par(mar=c(0.8,0,0.3,0)))       
+       layout.par = par(mar=c(0.8,0,0.4,0)))       
     
   return(graph_layout)
 }
