@@ -3,7 +3,7 @@ title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian N
 subtitle: "Supplementary Materials"
 author:
 - Jari Turkia, jari.turkia@cgi.com
-- University of Eastern Finland
+- School of Computing, University of Eastern Finland, Joensuu, Finland
 bibliography: biblio.bib
 output:
   pdf_document: default
