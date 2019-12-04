@@ -330,3 +330,98 @@ rownames(nrmse.mat) <- rep("", nrow(nrmse.mat))
 
 saveRDS(nrmse.mat, "evaluations/NRMSE-matrix3.rds")
 ```
+
+
+
+For comparison, we execute the cross-validation for non-shrinked model
+
+```{r 10-fold_holdout_gamma_nonrhs, echo=FALSE, eval=TRUE, message=FALSE}
+library(igraph)
+
+# Cross-validation models are stored in files at holdout-folders
+
+for (week in c(4,8,12))
+{
+  for (holdout_suffix in as.character(0:9))
+  {
+    # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from 'week'
+    holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == week))
+    
+    # Change this path to match your environment
+    cvmodelpath <- "/media/jari/Jarin WD Passport"
+    
+    # This is relative path for model
+    cvdir <- paste0(cvmodelpath, "/nonrhs_cv/week", week,"/holdout_", holdout_suffix)
+    
+    if (!dir.exists(cvdir))
+    {
+      dir.create(cvdir)
+    
+      initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+      sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                       inputdata = sysdimet,
+                                       targetdata = holdout_index,
+                                       predictor_columns = assumedpredictors, 
+                                       assumed_targets = assumedtargets, 
+                                       group_column = "SUBJECT_ID",
+                                       local_estimation = mebn.sampling,
+                                       local_model_cache = cvdir, 
+                                       stan_model_file = "mebn/BLMM_gamma_ar1_cv.stan",
+                                       reg_params = NULL,
+                                       normalize_values = TRUE)
+      
+      saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
+    }
+  }
+}
+```
+
+Following estimates only Normal distribution for blood insulin response. It is used as a replacement for Gamma model in Expfam AR(1).
+
+```{r 10-fold_holdout_normal_fsins_nonrhs, echo=FALSE, eval=TRUE, message=FALSE}
+library(igraph)
+# Cross-validation models are stored in holdout-folders
+
+fsins_only <- assumedtargets[assumedtargets$Name=="fsins",]
+
+for (week in c(4,8,12))
+{
+  for (holdout_suffix in as.character(0:9))
+  {
+    # Patients with 'holdout_suffix' as last characted in SUBJECT_ID are held out with their observation from 'week'
+    holdout_index <- as.vector(as.numeric(endsWith(as.character(sysdimet$SUBJECT_ID), holdout_suffix) & sysdimet$WEEK == week))
+    
+    # Change this path to match your environment
+    cvmodelpath <- "/media/jari/Jarin WD Passport"
+  
+    cvdir <- paste0(cvmodelpath, "/nonrhs_cv/normal_fsins/week", week,"/holdout_", holdout_suffix)
+    
+    if (dir.exists(cvdir))
+    {
+      dir.create(cvdir)
+    
+      initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
+      
+      sysdimet_gamma_ar1_rhs_cv <- mebn.bipartite_model(reaction_graph = initial_graph, 
+                                       inputdata = sysdimet,
+                                       targetdata = holdout_index,
+                                       predictor_columns = assumedpredictors, 
+                                       assumed_targets = fsins_only, 
+                                       group_column = "SUBJECT_ID",
+                                       local_estimation = mebn.sampling,
+                                       local_model_cache = cvdir, 
+                                       stan_model_file = "mebn/BLMM_normal_ar1_cv.stan",
+                                       reg_params = NULL,
+                                       normalize_values = TRUE)
+      
+      saveRDS(holdout_index, paste0(cvdir,"/holdout_index.rds"))
+    }
+  }
+}
+```
+
+
+
+
+
+
