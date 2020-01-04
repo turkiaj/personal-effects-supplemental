@@ -8,7 +8,7 @@ bibliography: biblio.bib
 output:
   pdf_document: default
   html_document: default
-abstract: This notebook is a supplementary material for the article "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. Comparison of  The hierarchical structure of the graphical model allows us to study the effects in both typical and personal levels. In addition we show that personal effect variations form clusters of similarly behaving patients. Finally, we show how personal graphical models can be predicted for patients that are held out from the model estimation. This shows that personal differences in nutrional effects do exist, and that they can be detected from repeated observations of food diaries and blood tests.
+abstract: This notebook is a supplementary material for the article "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. The hierarchical structure of the graphical model allows us to study the effects in both typical and personal levels. In addition we show that personal effect variations form clusters of similarly behaving subjects. Finally, we show how personal graphical models can be predicted for subjects that are held out from the model estimation. This shows that personal differences in nutrional effects do exist, and that they can be detected from repeated observations of food records and blood concentrations.
 ---
 
 ```{r setup, include=FALSE}
@@ -31,14 +31,14 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 
 # Online version (TRUE) uses color images while (FALSE) renders exact figures for the article 
-RenderArticleFigures <- FALSE
+RenderArticleFigures <- TRUE
 ```
 
 In this work we propose a Bayesian network as an appealing way to model and predict the effects of nutrition. The Bayesian network are directed graphical models where nodes of the graph are random variables and the edges between the nodes indicate the effects between variables. In the nutritional modelling we assign the amount of nutrients at the person's diet and the indicators of person's well-being as those random variables, and we study the effects between them. The goal is then to find the connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
 
 # Motivating example of personal nutrition data
 
-As an example, we analyze a dataset from the Sysdimet study [@pmid21901116] that contains four repeated measurements of 17 nutrients, some basic information about patients (gender, medication) and their corresponding blood test results, from 106 patients. 
+As an example, we analyze a dataset from the Sysdimet study [@pmid21901116] that contains four repeated measurements of 17 nutrients, some basic information about the subject (gender, medication) and their corresponding blood concentrations, from 106 individuals. 
 
 ```{r data_loading, echo=FALSE, message=FALSE}
 
@@ -53,7 +53,7 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
-Following spagettiplots show how the blood test measurements progress during the 12-week study. Measurements of only ten of 106 patients are shown at the plot here for clarity. Our goal is to predict next personal blood test result when patient's diet from past weeks is known. It is also likely that the successive blood test measurements are correlated to each other.
+Following spagettiplots show how the blood concentrations progress during the 12-week study. Measurements of only ten of 106 subjects are shown at the plot here for clarity. Our goal is to predict next personal blood concentration when patient's diet from past weeks is known. It is also likely that the successive blood concentration levels are correlated to each other.
 
 ```{r spagettiplot_data, echo=FALSE, warning=FALSE}
 library(ggplot2)
@@ -110,11 +110,11 @@ grid.arrange(ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0)
 
 ```
 
-When the future direction of the blood test levels can be predicted, the typical and personal importance of nutrients contributing this change be estimated from the model parameters. 
+When the future direction of the blood concetrations can be predicted, the typical and personal importance of nutrients contributing this change be estimated from the model parameters. 
 
 # Mixed-effect Bayesian network
 
-We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood tests, and only the magnitude of the effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model theory can be found at the main article.
+We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model theory can be found at the main article.
 
 Let us denote the graph of interconnected nutrients and responses with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
 
@@ -131,11 +131,11 @@ By using the Bayes' Rule we can be split this probability into proportions of th
 
 This turns the problem to finding a graph that is most probable given data. To enforce our assumption of biologically plausible graphs, we set the graph prior \(P(G)\) to zero for all other graphs than the previously descibed bipartite graphs with nutrients affecting the bodily responses.
 
-The joint probability of the graph \(P(G|D)\) can furthermore factorized into separate local probability distributions [@Bae2016, @Koller:2009:PGM:1795555] by their \textit{Markov blankets}. Hierarchical mixed-effect estimation allows us to study the distributions in both typical and personal levels.
+The joint probability of the graph \(P(G|D)\) can furthermore factorized into separate local probability distributions [@Bae2016, @Koller2009] by their \textit{Markov blankets}. Hierarchical mixed-effect estimation allows us to study the distributions in both typical and personal levels.
 
 ## Hierarchical estimation of the local distributions
 
-The joint probability distribution of the graph is factorized into separate distributions. We assume that the blood test random variables $Y_i$ are affected by a linear combination of the nutrient variables $pa(Y_i)$. The set of parameters describing this effect, $\phi_i$, can be split into typical $\beta$ and personal $b$ parts. We assume that the actual data denoted by the random variables follows distributions from the exponential family and we can use some link function to use this linear predictor.
+The joint probability distribution of the graph is factorized into separate distributions. We assume that the random variables $Y_i$ of blood concentrations are affected by a linear combination of the nutrient variables $pa(Y_i)$. The set of parameters describing this effect, $\phi_i$, can be split into typical $\beta$ and personal $b$ parts. We assume that the actual data denoted by the random variables follows distributions from the exponential family and we can use some link function to use this linear predictor.
 
 \begin{align}
 \begin{split}
@@ -152,7 +152,8 @@ library(igraph)
 initial_graph <- mebn.fully_connected_bipartite_graph(datadesc)
 
 V(initial_graph)$size = 10 
-# - put all blood test values in own rank
+
+# - put all blood concentrations in own rank
 bipa_layout <- layout_as_bipartite(initial_graph, types = V(initial_graph)$type == "100")
 # - flip layout sideways, from left to right
 gap <- 6
@@ -175,11 +176,11 @@ plot(initial_graph,
 
 ```
 
-We assume a connection from every nutrient and personal information to every blood test value at the dataset. The model search is then focused on to estimating optimal coefficients describing the connections. 
+We assume a connection from every nutrient and personal information to every blood concentration value at the dataset. The model search is then focused on to estimating optimal coefficients describing the connections. 
 
 # Model development
 
-Our starting assumption is that both nutrients and the blood test values are normally distributed. This assumption may be naive as it allows the blood tests to have negative values. We normalize all the input values to same scale, so that the estimated regression coefficients can be used as a indicators of connection strenght.
+Our starting assumption is that both nutrients and the blood concentrations are normally distributed. This assumption may be naive as it allows the blood concentrations to have negative values. We normalize all the input values to same scale, so that the estimated regression coefficients can be used as a indicators of connection strenght.
 
 ```{r graph_with_normal_rvs, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 sysdimet_normal <- mebn.bipartite_model(reaction_graph = initial_graph, 
@@ -196,7 +197,7 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood test values. As expected, the normally distributed random variables are not fitting well. Normal distribution allows probability for negative blood test values that resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood test values are more skewed to right. 
+We evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concenrations. As expected, the normally distributed random variables are not fitting well. Normal distribution allows probability for negative blood tconcenrations. that resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concenrations. are more skewed to right. 
 
 ```{r normal_model_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
@@ -205,7 +206,7 @@ mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 
 ## Developing the model beyond normal distributions
 
-More realistic probability distribution for blood test values would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
+More realistic probability distribution for blood concenration values would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
 
 ```{r graph_with_gamma_response, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 initial_gamma_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -223,7 +224,7 @@ sysdimet_gamma <- mebn.bipartite_model(reaction_graph = initial_gamma_graph,
 write.graph(sysdimet_gamma, "graphs/sysdimet_gamma.graphml", "graphml")
 ```
 
-The visual comparison of the true and estimated distributions of blood test variables shows that Gamma distribution follows the true distributions quite well. 
+The visual comparison of the true and estimated distributions of blood concenrations shows that Gamma distribution follows the true distributions quite well. 
 
 ```{r gamma_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
@@ -231,9 +232,9 @@ mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 
 The visual PPC inspection shows that the Gamma distribution fit generally better to responses than Normal distribution, but cholesterol values are still systematically estimated too low (fsldl and fskol) or too high (fshdl).
 
-## Modeling correlated observations with an autocorrelation structure
+## Modeling correlated observations with an autocorrelation process
 
-In the dataset the observations from patients' food diaries and blood tests have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated observations, we add an autocorrelation process to the model by adding an estimated portion of previous measurement to the linear predictor
+In the dataset the observations from subjects' food records and blood concentrations have one week response time. This might not be optimal time for all the responses and the successive observations might be correlated. For modeling the correlated observations, we add an autocorrelation process to the model by adding an estimated portion of previous measurement to the linear predictor
 
 ```
 mu[n] += Y[n-1] * ar1
@@ -280,7 +281,7 @@ kable(ar1_comparison) %>%
 
 In our analysis, we use two models: 1) typical effects are better shown with previous model that has vague prior on beta coefficients, and 2) personal effects became clearer in a model that uses shrinkage prior on beta coefficients. This shrinkaged model is also faster to evaluate in k-fold setting and is possibly a better predictor.
 
-The predictive ability of the model might be reduced by overfitting to small nuances of the whole dataset. To overcome the possible overfitting of non-shrinked model, we apply the Finnish horseshoe, a shrinkage prior, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we guess that one third of the nutrients might be relevant for any given blood test, and apply following parameters for the shrinkage
+The predictive ability of the model might be reduced by overfitting to small nuances of the whole dataset. To overcome the possible overfitting of non-shrinked model, we apply a shrinkage prior "Regularized Horseshoe Shrinkage (RHS)", also called Finnish horseshoe, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we guess that one third of the nutrients might be relevant for any given blood concenration, and apply following parameters for the shrinkage
 
 ```{r shrinkage_parameters, echo=TRUE, message=FALSE}
 shrinkage_parameters <- within(list(),
@@ -491,7 +492,7 @@ normal_plot <- mebn.target_dens_overlays("BLMM_normal/ar1_rhs/no_holdout/", only
 grid.arrange(gamma_plot, normal_plot,  nrow = 1, widths=c(2,2), padding=0)
 ```
 
-Next, we contruct a EXPFAM AR(1) model that has this normally distributed fsins-response and otherwise Gamma distributed blood test responses.
+Next, we contruct a EXPFAM AR(1) model that has this normally distributed fsins-response and otherwise Gamma distributed blood concenration responses.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Other local distributions use Gamma AR1 model, but fsins uses Normal AR1
@@ -583,7 +584,7 @@ nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
 #  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
 #  row_spec(0,bold=TRUE)
 
-kable(nrmse.mat, "latex", booktabs = T, caption = "") %>%
+kable(nrmse.mat, "latex", booktabs = T, caption = "NRMSE comparison between model candidates") %>%
   kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
   row_spec(0,bold=TRUE)
 
@@ -624,7 +625,7 @@ ggplot(nrmse.df, show.legend = FALSE) +
 
 # Evaluation with classification metrics
 
-Normalized root mean squared error (NRMSE) is good for comparing model candidates, but it does not say much about the actual usefulness of the model. For personal nutrition guiding, it is important to predict how given diet will affect the future blood test values. In the standard NRMSE comparison, the error between true and predicted values were compared, but a custom classification test can be also used. It tells if the given diet raises or lowers the future blood test values compared to past measurement. 
+Normalized root mean squared error (NRMSE) is good for comparing model candidates, but it does not say much about the actual usefulness of the model. For personal nutrition guiding, it is important to predict how given diet will affect the future blood concenration values. In the standard NRMSE comparison, the error between true and predicted values were compared, but a custom classification test can be also used. It tells if the given diet raises or lowers the future blood concenrations compared to past measurement. 
 
 Classification test allows also to compare MEBN with other classification methods. XGBoost is a well-performing decision tree method. It is a non-parametric machine learning method that learns personal reactions only by example. Following compares the cross-validated predictive accuracy of XGBoost with MEBN predictions (MEBN CV) that uses EXPFAM AR(1) RHS-model. Also in-sample MEBN fit with non-shrinked EXPFAM AR(1) is given for comparison. This best predicting model is used for dataset analysis at rest of this notebook.      
 
@@ -708,7 +709,7 @@ saveRDS(class_sum.mat, "evaluations/Class-expfam_rhs_matrix.rds")
 
 ## Summary of the model comparison
 
-This table summarizes how accurately we can predict if blood test values raise or lower when the current level and a diet are known. This evaluates the model that uses shrinkage. 
+This table summarizes how accurately we can predict if blood concenration increase or decrease when the current level and a diet are known. This evaluates the model that uses shrinkage. 
 
 ```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE}
 library(ggplot2)
@@ -718,7 +719,6 @@ library(grid)
 class_sum.mat <- readRDS("evaluations/Class-matrix1.rds")
 
 # Pick only 4 weeks average for comparison from MEBN
-# TODO: what about 12 weeks change?
 class.df <- as.data.frame(as.vector(class_sum.mat[,4]))
 class.df$model <- "MEBN"
 
@@ -735,16 +735,26 @@ colnames(mebn_rhs.df) <- c("accuracy","method")
 class.df <- rbind(class.df, mebn_rhs.df)
 
 # Add MEBN CV for comparison
-mebn_cv.mat <- readRDS("evaluations/GammaCV_accuracy_matrix.rds")
-mebn_cv.df <- as.data.frame(mebn_cv.mat[,4]-2)
-mebn_cv.df$method <- "MEBN RHS CV"
-colnames(mebn_cv.df) <- c("accuracy","method")
-class.df <- rbind(class.df, mebn_cv.df)
+
+# Cross-validation of non-shrinked model is omitted from final figure as it performs worst, as expected.
+
+#mebn_cv.mat <- readRDS("evaluations/ExpfamNonRHS_CV_accuracy_matrix.rds")
+#mebn_cv.df <- as.data.frame(mebn_cv.mat[,4]-2)
+#mebn_cv.df$method <- "MEBN CV"
+#colnames(mebn_cv.df) <- c("accuracy","method")
+#class.df <- rbind(class.df, mebn_cv.df)
+
+# Add MEBN RHS CV for comparison
+mebn_rhs_cv.mat <- readRDS("evaluations/GammaCV_accuracy_matrix.rds")
+mebn_rhs_cv.df <- as.data.frame(mebn_rhs_cv.mat[,4]-2)
+mebn_rhs_cv.df$method <- "MEBN RHS CV"
+colnames(mebn_rhs_cv.df) <- c("accuracy","method")
+class.df <- rbind(class.df, mebn_rhs_cv.df)
 
 # Add XGBoost for comparison
 xgboost.mat <- readRDS("evaluations/xgboost-cv-mat.rds")
 xgboost.df <- as.data.frame(round(as.numeric(xgboost.mat[,2])*100, 0))
-xgboost.df$method <- "XGBoost"
+xgboost.df$method <- "XGBoost CV"
 colnames(xgboost.df) <- c("accuracy","method")
 class.df <- rbind(class.df, xgboost.df)
 
@@ -754,7 +764,7 @@ class.df$response <- rep(rownames(class_sum.mat), 4)
 ggplot() +
   geom_col(data = class.df, aes(x=response, y=accuracy, fill=method), position = "dodge") +
   scale_y_discrete(limits=seq(0,100,10), labels = paste0(seq(0,100,10), "%")) +
-  labs(x = "Blood test", y = "Prediction accuracy") + theme(axis.title.x = element_blank()) +
+  labs(x = "Blood concentration", y = "Prediction accuracy") + theme(axis.title.x = element_blank()) +
   scale_fill_grey(start = .3, end = .7) + theme_bw()
 
 ```
@@ -780,11 +790,11 @@ kable(class_sum.mat, "latex", booktabs = T, caption = "Predictive accuracy perce
 ```
 
 
-# Typical effects of nutrition, and variance from the typical effects
+# Typical effects of nutrition and personal variance
 
 We have now reached a reasonably good fit for the local distributions of the Bayesian network. Our code has extracted a graphical model from these  posterior distributions of random variables and parameters. The graph consists mean values of the posteriors and also their credible intervals. This is a lighter data structure for further analysis and allows also graph operations besides the regression modeling.
 
-Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. This visualization shows mean of posterior for typical coefficients $\beta$ as weight of the connection between blood test and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood test
+Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. This visualization shows mean of posterior for typical coefficients $\beta$ as weight of the connection between blood concentrations and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood concentrationś
 
 ```{r, typical_effects_figure, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
@@ -948,7 +958,7 @@ grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
 
 ```
 
-These are the effect with most difference between patients. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
+These are the effect with most difference between subjects. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
 
 ```{r personal_variations_figure, fig.height = 5, fig.align = "left", cache = FALSE}
 source("mebn/MEBN.r")
@@ -1044,7 +1054,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-By looking previous diagram we see that there are four clearly identifiable groups between patients. 
+By looking previous diagram we see that there are four clearly identifiable groups between subjects, 
 
 **The effect of cholesterol medication**
 
@@ -1070,7 +1080,7 @@ cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
 mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 ```
 
-Cholesterol medication seems to dominate the clusters. There are patients for who cholesterol medication raises the blood insulin levels more than on average and for other group the raise is less than on average.
+Cholesterol medication seems to dominate the clusters. There are subjects for who cholesterol medication raises the blood insulin levels more than on average and for other group the raise is less than on average.
 
 Let's see how the clustering shows with absolute effects rather than difference from mean. Note that these are not the greatest effects, but those with most personal variance.
 
@@ -1100,7 +1110,7 @@ mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredic
 
 ```
 
-By looking at the absolute effect of the cholesterol medication it seems that there separetes two groups where one it is a significant factor in explaining blood insulin level, and other group where it does not play virtually any role. But does these patients even take cholesterol medications? Let's create a cross tabulation of observations to explore this effect more closely.
+By looking at the absolute effect of the cholesterol medication it seems that there separetes two groups where one it is a significant factor in explaining blood insulin level, and other group where it does not play virtually any role. But does these subjects even take cholesterol medications? Let's create a cross tabulation of observations to explore this effect more closely.
 
 ```{r cholmed_crosstab, echo=FALSE}
 
@@ -1112,9 +1122,10 @@ kable(tb) %>%
   column_spec(1, width = "10em") %>%
   row_spec(0,bold=TRUE) 
 ```
-This indicates that patients in clusters 2 and 4 are indeed taking cholesterol medication.
 
-The average blood insulin levels in these clusters are
+This indicates that subjects in clusters 2 and 4 are indeed taking cholesterol medication.
+
+The average insulin concentrations in these clusters are
 
 ```{r, echo=FALSE}
 clusters <- seq(1,4) 
@@ -1134,7 +1145,7 @@ kable(df) %>%
 
 ```
 
-There are 9 (=36/4) and 7 (=28/4) patients in clusters 2 and 4 who are taking cholesterol medication. For patients in the cluster 4 the average insulin level is  the medication seems to rise the insulin level quite much, but for patients in the cluster 2 not much at all. 
+There are 9 (=36/4) and 7 (=28/4) subjects in clusters 2 and 4 who are taking cholesterol medication. For subjects in the cluster 4 the average insulin level is  the medication seems to increase the insulin concentration quite much, but for subjects in the cluster 2 not much at all. 
 
 **Clustering with nutritional effects only**
 
@@ -1223,7 +1234,7 @@ k <- 4
 set.seed(fixed_seed)
 km <- kmeans(personal_variations_from_mean, centers = k)
 
-# Every patient can be assigned to some cluster based on how their reactions differ from average
+# Every subject can be assigned to some cluster based on how their reactions differ from average
 sysdimet$variation_group <- km$cluster 
 
 # Plot the clusters
@@ -1244,9 +1255,9 @@ k <- 4
 set.seed(fixed_seed)
 km <- kmeans(personal_effects, centers = k)
 
-# Every patient can be assigned to some cluster also based on how their personal reactions types
+# Every subject can be assigned to some cluster also based on how their personal reactions types
 
-# - repeat same cluster placement for all the observations of same patient
+# - repeat same cluster placement for all the observations of same subject
 observations_per_patient <- 4
 sysdimet$effect_group <- unlist(lapply(km$cluster,rep,observations_per_patient)) 
 
@@ -1257,11 +1268,12 @@ cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
 
 mebn.plot_clusters(cluster_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index)
 ```
-In clusters 1 and 2 there are patients whose blood insulin levels react on lower and on higher than average.
+
+In clusters 1 and 2 there are subjects whose insulin concentrations decrease and increase more than on average.
 
 # Personally predicted reaction types
 
-During the cross-validation we estimated personal models for each patient. Next we illustrate the differences within personal reaction types by picking few most distant ones. 
+During the cross-validation we estimated personal models for each subject. Next we illustrate the differences within personal reaction types by picking few most distant ones. 
 
 ```{r mufa_differences, echo=FALSE, eval=TRUE, message=FALSE}
 p <- nrow(assumedpredictors)
@@ -1270,7 +1282,7 @@ mufa_idx <- match("mufa", assumedpredictors$Name)
 
 mufa_fsins_idx <- p*(ins_idx-1) + mufa_idx
 
-# mufa -> fsins for every patient
+# mufa -> fsins for every subject
 mufa_fsins <- as.data.frame(cbind(personal_effects[, mufa_fsins_idx], seq(1, nrow(personal_effects))))
 colnames(mufa_fsins) <- c("effect", "subject_number")
 
@@ -1279,7 +1291,7 @@ ordered_mufa_fsins <- mufa_fsins[order(-mufa_fsins$effect),]
 person_id1 <- head(ordered_mufa_fsins$subject_number,1)
 person_id2 <- tail(ordered_mufa_fsins$subject_number,1)
 
-#What reaction clusters these patients belong?
+#What reaction clusters these subjects belong?
 #sysdimet[person_id1,]$effect_group   # patient 1 (S01) -> cluster 3
 #sysdimet[person_id2,]$effect_group   # patient 43 (S104) -> cluster 2  
 
@@ -1295,7 +1307,7 @@ expfam_ar1_dirs <- assumedtargets
 expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-# patient 1 (S01) -> cluster 3
+# subject 1 (S01) -> cluster 3
 personal_graph1 <- mebn.personal_graph(person_id = person_id1, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
@@ -1312,7 +1324,7 @@ expfam_ar1_dirs <- assumedtargets
 expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
-# patient 43 (S104) -> cluster 2
+# subject 43 (S104) -> cluster 2
 personal_graph2 <- mebn.personal_graph(person_id = person_id2, 
                                        reaction_graph = initial_graph, 
                                        predictor_columns = assumedpredictors, 
@@ -1332,9 +1344,9 @@ personal_graph2 <- read.graph("graphs/personal_insample_graph_s104.graphml", "gr
 
 par(mfrow=c(2,1))
 layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout, colorImage = !RenderArticleFigures)
-title("Patient 1 from cluster 3",cex.main=0.6)
+title("Subject 1 from cluster 3",cex.main=0.7)
 layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout, colorImage = !RenderArticleFigures)
-title("Patient 2 from cluster 2",cex.main=0.6)
+title("Subject 2 from cluster 2",cex.main=0.7)
 ```
 
 ```{r, echo=FALSE}
