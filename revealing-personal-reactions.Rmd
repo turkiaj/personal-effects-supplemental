@@ -1,5 +1,5 @@
 ---
-title: "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
+title: "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
 subtitle: "Supplementary Materials"
 author:
 - Jari Turkia, jari.turkia@cgi.com
@@ -8,7 +8,7 @@ bibliography: biblio.bib
 output:
   pdf_document: default
   html_document: default
-abstract: This notebook is a supplementary material for the article "Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. The hierarchical structure of the graphical model allows us to study the effects in both typical and personal levels. In addition we show that personal effect variations form clusters of similarly behaving subjects. Finally, we show how personal graphical models can be predicted for subjects that are held out from the model estimation. This shows that personal differences in nutrional effects do exist, and that they can be detected from repeated observations of food records and blood concentrations.
+abstract: This notebook is supplementary material for the article "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. The hierarchical structure of the network model allows studying the effects in both typical and personal levels. In addition, it is shown that the personal effects form clusters of similarly behaving subjects. Finally, personal networks are predicted for unseen subjects with cross-validation. This shows that there exist personal differences in nutrional effects, and they can be detected from repeated observations of food records and blood concentrations.
 ---
 
 ```{r setup, include=FALSE}
@@ -31,10 +31,10 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 
 # Online version (TRUE) uses color images while (FALSE) renders exact figures for the article 
-RenderArticleFigures <- TRUE
+RenderArticleFigures <- FALSE
 ```
 
-In this work we propose a Bayesian network as an appealing way to model and predict the effects of nutrition. The Bayesian network are directed graphical models where nodes of the graph are random variables and the edges between the nodes indicate the effects between variables. In the nutritional modelling we assign the amount of nutrients at the person's diet and the indicators of person's well-being as those random variables, and we study the effects between them. The goal is then to find the connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
+In this work we propose Bayesian network as an appealing way to model and predict the effects of nutrition. Bayesian networks are directed graphical models that describe a joint probability distribution where nodes of the graph are random variables and edges between the nodes form a conditional probability structure. In nutritional modeling we assign nutritional composition of subjects' diet and different blood concentrations as those random variables, and study the connections between them. The goal is then to find such connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
 
 # Motivating example of personal nutrition data
 
@@ -53,7 +53,7 @@ assumedpredictors <- datadesc[datadesc$Order==100,]
 assumedtargets <- datadesc[datadesc$Order==200,] 
 ```
 
-Following spagettiplots show how the blood concentrations progress during the 12-week study. Measurements of only ten of 106 subjects are shown at the plot here for clarity. Our goal is to predict next personal blood concentration when patient's diet from past weeks is known. It is also likely that the successive blood concentration levels are correlated to each other.
+Following spagettiplots show the progress of blood concentrations during the 12-week study. Measurements of only ten from 106 subjects are shown at the plots for clarity. Our goal is to predict next personal blood concentration when subject's diet from past weeks is known.
 
 ```{r spagettiplot_data, echo=FALSE, warning=FALSE}
 library(ggplot2)
@@ -78,7 +78,6 @@ hdlplot <- ggplot() +
 
 hdlplot
 ```
-
 
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=7, fig.width=6, message=FALSE}
 hdlplot <- ggplot() +
@@ -106,7 +105,7 @@ glukplot <- ggplot() +
   scale_x_discrete(limits=c(0,4,8,12)) +
   labs(x = "Week", y = "Glucose (mmol/l)") 
 
-grid.arrange(ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
+grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
 
 ```
 
@@ -116,7 +115,7 @@ When the future direction of the blood concetrations can be predicted, the typic
 
 We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model theory can be found at the main article.
 
-Let us denote the graph of interconnected nutrients and responses with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
+Let us denote the graph of interconnected nutrients and blood concentrations with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
 
 \begin{align}
 {P}({G}|{D})
@@ -197,7 +196,7 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 ```
 
-We evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concenrations. As expected, the normally distributed random variables are not fitting well. Normal distribution allows probability for negative blood tconcenrations. that resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concenrations. are more skewed to right. 
+Here we evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concenrations. As expected, normal distribution in random variables is not fitting well. Normal distribution allows non-zero probability for negative blood concenrations resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concenrations are usually more skewed to right. 
 
 ```{r normal_model_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
@@ -206,7 +205,7 @@ mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 
 ## Developing the model beyond normal distributions
 
-More realistic probability distribution for blood concenration values would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
+More realistic probability distribution for blood concenrations would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
 
 ```{r graph_with_gamma_response, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 initial_gamma_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -230,7 +229,7 @@ The visual comparison of the true and estimated distributions of blood concenrat
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 ```
 
-The visual PPC inspection shows that the Gamma distribution fit generally better to responses than Normal distribution, but cholesterol values are still systematically estimated too low (fsldl and fskol) or too high (fshdl).
+The visual PPC inspection shows that the Gamma distribution fit generally better to responses than Normal distribution, but cholesterol concentrations are still systematically estimated too low (fsldl and fskol) or too high (fshdl).
 
 ## Modeling correlated observations with an autocorrelation process
 
@@ -281,7 +280,7 @@ kable(ar1_comparison) %>%
 
 In our analysis, we use two models: 1) typical effects are better shown with previous model that has vague prior on beta coefficients, and 2) personal effects became clearer in a model that uses shrinkage prior on beta coefficients. This shrinkaged model is also faster to evaluate in k-fold setting and is possibly a better predictor.
 
-The predictive ability of the model might be reduced by overfitting to small nuances of the whole dataset. To overcome the possible overfitting of non-shrinked model, we apply a shrinkage prior "Regularized Horseshoe Shrinkage (RHS)", also called Finnish horseshoe, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we guess that one third of the nutrients might be relevant for any given blood concenration, and apply following parameters for the shrinkage
+The predictive ability of the model might be reduced if the model overfits to small nuances of the dataset. To overcome the possible overfitting, we apply a shrinkage prior "Regularized Horseshoe Shrinkage (RHS)", also called Finnish horseshoe, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we assume that one third of the nutrients might be relevant for any given blood concenration, and apply following parameters for the shrinkage
 
 ```{r shrinkage_parameters, echo=TRUE, message=FALSE}
 shrinkage_parameters <- within(list(),
@@ -325,15 +324,15 @@ write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml"
 mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
 ```
 
-Visual comparison with posterior predictive checks seem to favor this model. Let us confirm the evaluation with numerical metrics.
+Visual comparison with posterior predictive check seem to favor this model. Let us confirm the evaluation with numerical metrics.
 
 # Evaluation of the models' fit and predictive performance
 
-Diffent model versions are compared with a normalized root mean squared error (NRMSE) and also with a classification test that shows better the usefulness of the method. The classification test allows also comparison with other classification methods.
+Different model versions are compared with a normalized root mean squared error (NRMSE) and also with a classification test that allows comparison with other classification methods.
 
 ## Comparison with in-sample data
 
-Following compares different model candidates posterior predictive distributions with their true values using normalized root mean squared error (NRMSE) metrics. It allows comparing the prediction accuracy of responses with different scales.
+Following compares different model candidates by using normalized root mean squared error (NRMSE) metrics. Normalization allows comparing the prediction accuracy of responses with different scales.
 
 ```{r NRMSE comparison, eval=FALSE, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
@@ -436,7 +435,7 @@ kable(nrmse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents 
 
 ```
 
-It shows that Gamma distribution with AR(1) autocorralation structure has best overall fit to data. Horseshoe prior on typical effects has shrinked some coefficients close to zero and it has increased mean NRMSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
+The comparson shows that Gamma distribution with AR(1) autocorralation structure has best overall fit to data. The horseshoe prior on typical effects has shrinked some coefficients close to zero and it has increased mean NRMSE just a little. An interesting finding is that the blood insulin (fsins) predictions are better modeled with Normal distribution. For the final MEBN we replace Gamma AR(1) with Normal AR(1) model for fsins.
 
 ```{r graph_with_normal_ar1, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 
