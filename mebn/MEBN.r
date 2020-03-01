@@ -225,7 +225,7 @@ mebn.set_model_parameters <- function(predictor_columns, target_column, group_co
                      J <- length(levels(inputdata[[group_column]]))
                      group <- as.integer(inputdata[[group_column]])
                      holdout <- targetdata
-                     offset <- 60
+                     offset <- 30
                    })
   
   params <- c(params, reg_params)

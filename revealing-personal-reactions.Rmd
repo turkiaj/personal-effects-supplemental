@@ -113,38 +113,7 @@ When the future direction of the blood concetrations can be predicted, the typic
 
 # Mixed-effect Bayesian network
 
-We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. As we are interested in the personal variations of these nutritional effects we use a mixed-effect parametrization of Bayesian network [@Bae2016]. This allows us to estimate both typical and personal magnitudes of the nutritional effects with a same model. Thorough explanation of the model theory can be found at the main article.
-
-Let us denote the graph of interconnected nutrients and blood concentrations with $G$. We can then formulate the modeling problem as finding the graph $G$ that is the most probable given the data $D$
-
-\begin{align}
-{P}({G}|{D})
-\end{align}
-
-By using the Bayes' Rule we can be split this probability into proportions of the data likelihood of the given graph and any prior information we might have about suitable graphs 
-
-\begin{align}
-\label{prop_bayes_theorem}
-{P}({G}|{D}) \propto {P}({D}|{G}) {P}({G})
-\end{align}
-
-This turns the problem to finding a graph that is most probable given data. To enforce our assumption of biologically plausible graphs, we set the graph prior \(P(G)\) to zero for all other graphs than the previously descibed bipartite graphs with nutrients affecting the bodily responses.
-
-The joint probability of the graph \(P(G|D)\) can furthermore factorized into separate local probability distributions [@Bae2016, @Koller2009] by their \textit{Markov blankets}. Hierarchical mixed-effect estimation allows us to study the distributions in both typical and personal levels.
-
-## Hierarchical estimation of the local distributions
-
-The joint probability distribution of the graph is factorized into separate distributions. We assume that the random variables $Y_i$ of blood concentrations are affected by a linear combination of the nutrient variables $pa(Y_i)$. The set of parameters describing this effect, $\phi_i$, can be split into typical $\beta$ and personal $b$ parts. We assume that the actual data denoted by the random variables follows distributions from the exponential family and we can use some link function to use this linear predictor.
-
-\begin{align}
-\begin{split}
-\label{EXPFAM LME}
-{P}({D}|{G}){P}({G})
-& = \prod_{i=1}^{v} {P}({D}|{G_i}){P}({G_i}) \\
-& = \prod_{i=1}^{v} {P}({Y_i}|{pa(Y_i), \phi_i}){P}({G_i}) \\
-& = \prod_{i=1}^{v} {EXPFAM}({Y_i} | pa(Y_i)\beta_i + pa_Z(Y_i)b_i){P}({G_i})
-\end{split}
-\end{align}
+We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. 
 
 ```{r graph, fig.height = 5, fig.align = "left", echo=FALSE, message=FALSE}
 library(igraph)
