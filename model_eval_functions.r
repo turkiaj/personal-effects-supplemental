@@ -175,4 +175,8 @@ make_delta <- function(true_response, pred_response)
   #return(true_delta)
 }
 
+make_delta_2 <- function(true_response, pred_response)
+{
+  return(pred_response[,2] - true_response[,1] )
+}
 

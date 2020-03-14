@@ -463,7 +463,7 @@ mebn.target_dens_overlays <- function(localfit_directory, target_variables, data
     target_blmm <- mebn.get_localfit(paste0(localfit_directory,targetname))
     true_value <- as.vector(dataset[,targetname])
     
-    posterior <- extract(target_blmm, pars = c("Y_rep"))
+    posterior <- rstan::extract(target_blmm, pars = c("Y_rep"))
     posterior_y_50 <- posterior$Y_rep[1:50,]
     
     scalemin <- as.numeric(as.character(target_variables[target_variables$Name == targetname,]$ScaleMin))
@@ -472,6 +472,45 @@ mebn.target_dens_overlays <- function(localfit_directory, target_variables, data
     dens_plots[[i]] <- ppc_dens_overlay(true_value, posterior_y_50) + 
       coord_cartesian(xlim = c(scalemin,scalemax)) +
       ggtitle(targetname)
+
+    i <- i + 1
+  }
+  
+  bayesplot_grid(plots = dens_plots, legends = FALSE)
+}
+
+##################################################
+
+mebn.expfam_dens_overlays <- function(target_models_dirs, target_variables, dataset)
+{
+  library(rstan)
+  library(bayesplot)
+  library(ggplot2)
+
+  color_scheme_set("gray")
+  bayesplot_theme_set(theme_bw())
+  
+  dens_plots <- list()
+  i <- 1
+  
+  for (targetname in target_variables$Name)
+  {
+    localfit_directory <- target_models_dirs[target_models_dirs$Name==targetname,]$modelcache
+    localfit_directory <- paste0(localfit_directory, "/")
+    
+    target_blmm <- mebn.get_localfit(paste0(localfit_directory,targetname))
+    true_value <- as.vector(dataset[,targetname])
+    
+    posterior <- rstan::extract(target_blmm, pars = c("Y_rep"))
+    posterior_y_50 <- posterior$Y_rep[1:80,]
+    
+    scalemin <- as.numeric(as.character(target_variables[target_variables$Name == targetname,]$ScaleMin))
+    scalemax <- as.numeric(as.character(target_variables[target_variables$Name == targetname,]$ScaleMax))
+    
+    dens_plots[[i]] <- ppc_dens_overlay(true_value, posterior_y_50) + 
+      coord_cartesian(xlim = c(scalemin,scalemax)) +
+      ggtitle(targetname) + 
+      theme_bw()
     
     i <- i + 1
   }
@@ -1139,7 +1178,6 @@ mebn.plot_clusters <- function(cluster_data, cluster_spread, clusters_index, ass
 
   i <- cluster_index[1]
   plot_data$amount <- cluster_data.filtered[as.character(i)][,]
-  #plot_data$amount <- cluster_data.filtered$'1'
   plot_data$cluster <- i
   
   cluster_labels <- c()
@@ -1167,6 +1205,9 @@ mebn.plot_clusters <- function(cluster_data, cluster_spread, clusters_index, ass
   names(cluster_labels) <- cluster_index
 
   plot_data$below_above <- ifelse(plot_data$amount < 0, "below", "above")
+  
+  # Replace arror characters with an arrow symbol
+  #plot_data$effect <- sub("->", sprintf("\u21D2"), plot_data$effect)
   
   if (sort_by_amount == TRUE) {
     ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 

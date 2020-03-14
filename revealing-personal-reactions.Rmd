@@ -6,7 +6,8 @@ author:
 - School of Computing, University of Eastern Finland, Joensuu, Finland
 bibliography: biblio.bib
 output:
-  pdf_document: default
+  pdf_document:
+    latex_engine: xelatex
   html_document: default
 abstract: This notebook is supplementary material for the article "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. The hierarchical structure of the network model allows studying the effects in both typical and personal levels. In addition, it is shown that the personal effects form clusters of similarly behaving subjects. Finally, personal networks are predicted for unseen subjects with cross-validation. This shows that there exist personal differences in nutrional effects, and they can be detected from repeated observations of food records and blood concentrations.
 ---
@@ -31,7 +32,7 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 
 # Online version (TRUE) uses color images while (FALSE) renders exact figures for the article 
-RenderArticleFigures <- FALSE
+RenderArticleFigures <- TRUE
 ```
 
 In this work we propose Bayesian network as an appealing way to model and predict the effects of nutrition. Bayesian networks are directed graphical models that describe a joint probability distribution where nodes of the graph are random variables and edges between the nodes form a conditional probability structure. In nutritional modeling we assign nutritional composition of subjects' diet and different blood concentrations as those random variables, and study the connections between them. The goal is then to find such connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
@@ -71,10 +72,15 @@ sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank()) +
   scale_colour_grey() +
   theme_bw()
+
+
+#  geom_rect(aes(xmin=3, xmax=4, ymin=0.5, ymax=Inf)) + 
 
 hdlplot
 ```
@@ -82,27 +88,37 @@ hdlplot
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=7, fig.width=6, message=FALSE}
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 ldlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsldl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "LDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 insplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsins, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Insulin (mU/l)") + theme(axis.title.x = element_blank())
 
 kolplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fskol, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Total chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 glukplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fpgluk, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,4,8,12)) +
+  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(4,8,12)) + 
+  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Glucose (mmol/l)") 
 
 grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
@@ -289,7 +305,7 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
 ```
 
-```{r gamma_ar1_rhs_ppc, echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r gamma_ar1_rhs_ppc, echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
 ```
 
@@ -394,13 +410,13 @@ saveRDS(nrmse.mat, "evaluations/NRMSE-matrix1.rds")
 ```{r model_nrmse1, echo=FALSE, message=FALSE, warning=FALSE}
 nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix1.rds")
 
-#kable(nrmse.mat) %>%
-#  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
-#  row_spec(0,bold=TRUE)
-
-kable(nrmse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
-  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+kable(nrmse.mat) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
   row_spec(0,bold=TRUE)
+
+#kable(nrmse.mat, "latex", booktabs = T, caption = "Predictive accuracy percents for correct direction of change") %>%
+#  kable_styling(latex_options = c("striped", "condensed"), full_width = TRUE) %>%
+#  row_spec(0,bold=TRUE)
 
 ```
 
@@ -460,7 +476,7 @@ normal_plot <- mebn.target_dens_overlays("BLMM_normal/ar1_rhs/no_holdout/", only
 grid.arrange(gamma_plot, normal_plot,  nrow = 1, widths=c(2,2), padding=0)
 ```
 
-Next, we contruct a EXPFAM AR(1) model that has this normally distributed fsins-response and otherwise Gamma distributed blood concenration responses.
+Next, we contruct a EXPFAM AR(1) model that has this normally distributed fsins-response and otherwise Gamma distributed blood concenration responses. PPC of this combined model is then
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # Other local distributions use Gamma AR1 model, but fsins uses Normal AR1
@@ -472,6 +488,17 @@ expfam_ar1_rhs_dirs <- assumedtargets
 expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
+
+```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+source("mebn/MEBN.r")
+
+expfam_ar1_rhs_dirs2 <- assumedtargets
+expfam_ar1_rhs_dirs2$modelcache <- "BLMM_gamma/ar1_rhs/no_holdout"
+expfam_ar1_rhs_dirs2[expfam_ar1_rhs_dirs2$Name=="fsins",]$modelcache <- "BLMM_normal/ar1_rhs/no_holdout"
+
+mebn.expfam_dens_overlays(expfam_ar1_rhs_dirs2, assumedtargets, sysdimet)
+```
+
 
 ```{r nrmse_expfam, cache=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 source("model_eval_functions.r")
@@ -786,12 +813,10 @@ b_sigma <- allnodes[allnodes$type=="b_sigma"]
 typical_effects<-data.frame(matrix(NA, nrow=length(beta), ncol=0))
 
 # HTML
-typical_effects$effect_text <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
-
-# Latex
 typical_effects$effect <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
 
-typical_effects$effect <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0("$\\text{", toString(datadesc[datadesc$Name==x[1],]$Description),"}$ $\\rightarrow$ $\\text{", toString(datadesc[datadesc$Name==x[2],]$Description), "}$")))
+# Latex
+typical_effects$effect_text <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
 
 typical_effects$target <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) toString(datadesc[datadesc$Name==x[2],]$Description)))
 
@@ -828,10 +853,10 @@ b_sigma <- allnodes[allnodes$type=="b_sigma"]
 typical_effects_rhs<-data.frame(matrix(NA, nrow=length(beta), ncol=0))
 
 # HTML
-typical_effects_rhs$effect_text <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
+typical_effects_rhs$effect <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
 
 # Latex
-typical_effects_rhs$effect <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0("$\\text{", toString(datadesc[datadesc$Name==x[1],]$Description),"}$ $\\rightarrow$ $\\text{", toString(datadesc[datadesc$Name==x[2],]$Description), "}$")))
+typical_effects_rhs$effect_text <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) paste0(toString(datadesc[datadesc$Name==x[1],]$Description)," -> ", toString(datadesc[datadesc$Name==x[2],]$Description))))
 
 typical_effects_rhs$target <- unlist(lapply(strsplit(gsub("beta_","", beta$name), "_"), function(x) toString(datadesc[datadesc$Name==x[2],]$Description)))
 
@@ -887,7 +912,7 @@ p1 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=strength)) +
   theme(axis.title.y=element_blank(), 
         axis.text.y=element_text(size=9),
         axis.title.x=element_text(size=9)) +
-  labs(y="non-shrinked strength") +
+  labs(y=expression(paste(hat(beta),", vaque prior"))) +
   coord_flip()
 
 # Plot for shrinked typical effects
@@ -903,7 +928,7 @@ p2 <- ggplot(ordered_typical_effects_rhs, aes(x=effect_text, y=strength)) +
   theme(axis.title.y=element_blank(), 
         axis.text.y=element_blank(),
         axis.title.x=element_text(size=9)) +
-  labs(y="shrinked strength") +
+  labs(y=expression(paste(hat(beta),", shrinkage prior"))) +
   coord_flip()
 
 
@@ -919,7 +944,7 @@ p3 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=variance)) +
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank(),
         axis.title.x=element_text(size=9)) +
-  labs(y="variance between patients") +
+  labs(y=expression(paste("",hat(sigma[b]),", inter-subject variance"))) +
   coord_flip()  
 
 grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
@@ -931,7 +956,7 @@ These are the effect with most difference between subjects. Let us the examine c
 ```{r personal_variations_figure, fig.height = 5, fig.align = "left", cache = FALSE}
 source("mebn/MEBN.r")
 effects_with_most_variance <- ordered_typical_effects[ordered_typical_effects$variance >= 0.30,]
-effects_with_most_variance$effect <- effects_with_most_variance$effect_text
+effects_with_most_variance$effect <- effects_with_most_variance$effect
 number_of_varying_effects <- nrow(effects_with_most_variance)
 
 mebn.plot_personal_variations(sysdimet_expfam_ar1, number_of_varying_effects)
@@ -1028,7 +1053,7 @@ By looking previous diagram we see that there are four clearly identifiable grou
 
 At this plot, zero of X-axis denotes a typical behaviour of that particular reaction, and bars denote a deviation from this typical mean.
 
-```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
+```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1045,6 +1070,7 @@ sysdimet$variation_group <- km$cluster
 variations_data <- as.data.frame(t(km$centers))
 cluster_index <- seq(1:k)
 cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
+
 mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 ```
 
@@ -1052,7 +1078,7 @@ Cholesterol medication seems to dominate the clusters. There are subjects for wh
 
 Let's see how the clustering shows with absolute effects rather than difference from mean. Note that these are not the greatest effects, but those with most personal variance.
 
-```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
+```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1193,7 +1219,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-```{r variation clusters3, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
+```{r variation clusters3, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
 source("mebn/MEBN.r")
 # Number of cluster centers 
 k <- 4
@@ -1214,7 +1240,7 @@ mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredic
 ```
 
 
-```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=TRUE}
+```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
 
 # Number of cluster centers 
 k <- 4
@@ -1266,7 +1292,7 @@ person_id2 <- tail(ordered_mufa_fsins$subject_number,1)
 #mean(sysdimet[sysdimet$SUBJECT_ID == 'S104',]$fsins)person_id2
 ```
 
-```{r personal_graph1, echo=FALSE, eval=TRUE}
+```{r personal_graph1, echo=FALSE, eval=TRUE, cache=TRUE}
 source("mebn/MEBN.r")
 
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -1285,7 +1311,7 @@ personal_graph1 <- mebn.personal_graph(person_id = person_id1,
 write.graph(personal_graph1, "graphs/personal_insample_graph_s01.graphml", "graphml")
 ```
 
-```{r personal_graph2, echo=FALSE, eval=TRUE}
+```{r personal_graph2, echo=FALSE, eval=TRUE, cache=TRUE}
 initial_graph <- mebn.new_graph_with_randomvariables(datadesc)
 
 expfam_ar1_dirs <- assumedtargets
@@ -1304,7 +1330,7 @@ write.graph(personal_graph2, "graphs/personal_insample_graph_s104.graphml", "gra
 
 We can then compare the visualizations of the personal reaction graphs. The effect of cholesterol medication is most significant difference, but other differences exist as well.
 
-```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 source("mebn/MEBN.r")
 require(igraph)
 personal_graph1 <- read.graph("graphs/personal_insample_graph_s01.graphml", "graphml")
@@ -1316,6 +1342,8 @@ title("Subject 1 from cluster 3",cex.main=0.7)
 layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout, colorImage = !RenderArticleFigures)
 title("Subject 2 from cluster 2",cex.main=0.7)
 ```
+
+
 
 ```{r, echo=FALSE}
 personal_effect <- function(effect, patient, p_graph){
