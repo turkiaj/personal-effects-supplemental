@@ -1,15 +1,34 @@
 ---
 title: "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
-subtitle: "Supplementary Materials"
 author:
-- Jari Turkia, jari.turkia@cgi.com
-- School of Computing, University of Eastern Finland, Joensuu, Finland
+- JARI TURKIA
+- School of Computing, University of Eastern Finland, 80101 Joensuu, Finland, and 
+- CGI Suomi, Joensuu, Finland
+- jari.turkia@cgi.com
+- .
+- VILLE HAUTAMÄKI, LAURI MEHTÄTALO
+- School of Computing, University of Eastern Finland, 80101 Joensuu, Finland
+- .
+- URSULA SCHWAB
+- School of Medicine, Institute of Public Health and Clinical Nutrition,
+- University of Eastern Finland, Kuopio, Finland, and 
+- Department of Medicine, Endocrinology and Clinical Nutrition, Kuopio University Hospital, Kuopio, Finland
 bibliography: biblio.bib
 output:
   pdf_document:
     latex_engine: xelatex
+  word_document: default
   html_document: default
-abstract: This notebook is supplementary material for the article "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in detail how mixed-effect Bayesian network is constructed and how it is used to model the effects of nutrition. The hierarchical structure of the network model allows studying the effects in both typical and personal levels. In addition, it is shown that the personal effects form clusters of similarly behaving subjects. Finally, personal networks are predicted for unseen subjects with cross-validation. This shows that there exist personal differences in nutrional effects, and they can be detected from repeated observations of food records and blood concentrations.
+subtitle: Supplementary Materials
+abstract: This notebook is supplementary material for the article "Revealing Personal
+  Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in
+  detail how mixed-effect Bayesian network is constructed and how it is used to model
+  the effects of nutrition. The hierarchical structure of the network model allows
+  studying the effects in both typical and personal levels. In addition, it is shown
+  that the personal effects form clusters of similarly behaving subjects. Finally,
+  personal networks are predicted for unseen subjects with cross-validation. This
+  shows that there exist personal differences in nutrional effects, and they can be
+  detected from repeated observations of food records and blood concentrations.
 ---
 
 ```{r setup, include=FALSE}
@@ -32,14 +51,14 @@ fixed_seed <- 678
 source("mebn/MEBN.r")
 
 # Online version (TRUE) uses color images while (FALSE) renders exact figures for the article 
-RenderArticleFigures <- TRUE
+RenderArticleFigures <- FALSE
 ```
 
 In this work we propose Bayesian network as an appealing way to model and predict the effects of nutrition. Bayesian networks are directed graphical models that describe a joint probability distribution where nodes of the graph are random variables and edges between the nodes form a conditional probability structure. In nutritional modeling we assign nutritional composition of subjects' diet and different blood concentrations as those random variables, and study the connections between them. The goal is then to find such connections for the graph that most probably describe the correct conditional relationships between nutrients and their effects.
 
-# Motivating example of personal nutrition data
+# Personal nutrition data
 
-As an example, we analyze a dataset from the Sysdimet study [@pmid21901116] that contains four repeated measurements of 17 nutrients, some basic information about the subject (gender, medication) and their corresponding blood concentrations, from 106 individuals. 
+We analyze a dataset from the Sysdimet study [@pmid21901116] that contains four repeated measurements of 17 nutrients, some basic information about the subject (gender, medication) and their corresponding blood concentrations, from 106 individuals. 
 
 ```{r data_loading, echo=FALSE, message=FALSE}
 
@@ -72,9 +91,9 @@ sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0, 4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank()) +
   scale_colour_grey() +
   theme_bw()
@@ -88,37 +107,37 @@ hdlplot
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=7, fig.width=6, message=FALSE}
 hdlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fshdl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0,4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 ldlplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsldl, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0,4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "LDL-chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 insplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fsins, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0,4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Insulin (mU/l)") + theme(axis.title.x = element_blank())
 
 kolplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fskol, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0,4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Total chol. (mmol/l)") + theme(axis.title.x = element_blank())
 
 glukplot <- ggplot() +
   geom_line(data=sysdimet_every_10th, aes(y = fpgluk, x=WEEK, color=SUBJECT_ID), size=0.6, show.legend = FALSE) +
-  scale_x_discrete(limits=c(0,3,4,7,8,11,12)) +
-  geom_vline(xintercept =c(4,8,12)) + 
-  annotate("rect",xmin=c(3,7,11), xmax=c(4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
+  scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
+  geom_vline(xintercept =c(0,4,8,12)) + 
+  annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
   labs(x = "Week", y = "Glucose (mmol/l)") 
 
 grid.arrange(hdlplot, ldlplot, kolplot, insplot, glukplot, nrow = 5, ncol=1, padding=0) 
@@ -265,7 +284,7 @@ kable(ar1_comparison) %>%
 
 In our analysis, we use two models: 1) typical effects are better shown with previous model that has vague prior on beta coefficients, and 2) personal effects became clearer in a model that uses shrinkage prior on beta coefficients. This shrinkaged model is also faster to evaluate in k-fold setting and is possibly a better predictor.
 
-The predictive ability of the model might be reduced if the model overfits to small nuances of the dataset. To overcome the possible overfitting, we apply a shrinkage prior "Regularized Horseshoe Shrinkage (RHS)", also called Finnish horseshoe, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we assume that one third of the nutrients might be relevant for any given blood concenration, and apply following parameters for the shrinkage
+The predictive ability of the model might be reduced if the model overfits to small nuances of the dataset. To overcome the possible overfitting, we apply a shrinkage prior "Regularized Horseshoe Shrinkage (RHS)" [@Piironen2017a], also called Finnish horseshoe, on regression coefficients. It allows specifying a prior knowledge, or at least an educated guess, about the number of significant predictors for a target. Here we assume that one third of the nutrients might be relevant for any given blood concenration, and apply following parameters for the shrinkage
 
 ```{r shrinkage_parameters, echo=TRUE, message=FALSE}
 shrinkage_parameters <- within(list(),
@@ -912,7 +931,7 @@ p1 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=strength)) +
   theme(axis.title.y=element_blank(), 
         axis.text.y=element_text(size=9),
         axis.title.x=element_text(size=9)) +
-  labs(y=expression(paste(hat(beta),", vaque prior"))) +
+  labs(y=expression(paste(hat(beta),", vague prior"))) +
   coord_flip()
 
 # Plot for shrinked typical effects
@@ -1343,7 +1362,7 @@ layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout, colorIma
 title("Subject 2 from cluster 2",cex.main=0.7)
 ```
 
-
+Following table compares some of the distinguishing differences between these subjects
 
 ```{r, echo=FALSE}
 personal_effect <- function(effect, patient, p_graph){
@@ -1365,7 +1384,7 @@ pe <- rbind(pe, personal_effect("energia_fsins", 2, personal_graph2))
 pe <- rbind(pe, personal_effect("epa_fsins", 1, personal_graph1))
 pe <- rbind(pe, personal_effect("epa_fsins", 2, personal_graph2))
 
-colnames(pe)<-c("Patient", "Effect", "Lower-CI", "Mean value", "Upper-CI")
+colnames(pe)<-c("Subject", "Effect", "Lower-CI", "Mean value", "Upper-CI")
 
 kable(pe) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = TRUE) %>%
