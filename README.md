@@ -1,7 +1,7 @@
 # Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network
 ## Supplementary material for the article
 
-This repository contains all the data and code for replicating the analysis that is reported in the main article. The analysis is conducted in RMarkdown notebook and it contains all the details for model developing, testing and inference. All the figures at the article are produced with this notebook without any editing.
+This repository contains all the data and code for preproducing the analysis and figures in the main article. The analysis is conducted in RMarkdown notebook and it contains all the details for model developing, testing and inference. All the figures at the article are produced with this notebook without any editing.
 
 Repository contents:
 
@@ -16,5 +16,17 @@ Repository contents:
 - models/                           - Cache folder for storing estimated Stan models. Estimated models are stored as files to speed up the execution.
 - graphs/                           - Cache folder for storing MEBN-graphs estimated Stan models. Estimated models are stored as files to speed up the execution.
 - README.md                         - This file
+
+
+Execution of the RMarkdown notebooks require R version 3.6 (https://cran.r-project.org/) and following packages
+- RStan (https://mc-stan.org/users/interfaces/rstan)
+- iGraph (https://igraph.org/r)
+- Bayesplot (https://mc-stan.org/bayesplot)
+- knitr (https://cran.r-project.org/web/packages/knitr)
+- kableExtra (https://cran.r-project.org/web/packages/kableExtra)
+- ggplot2 (https://cran.r-project.org/web/packages/ggplot2)
+- gridExtra (https://cran.r-project.org/web/packages/gridExtra)
+- xgboost (https://cran.r-project.org/web/packages/xgboost)
+- stats
 
 ..

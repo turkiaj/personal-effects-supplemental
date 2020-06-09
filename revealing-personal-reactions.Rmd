@@ -78,7 +78,7 @@ Following spagettiplots show the progress of blood concentrations during the 12-
 ```{r spagettiplot_data, echo=FALSE, warning=FALSE}
 library(ggplot2)
 library(gridExtra)
-library(grid)
+#library(grid)
 
 plot_patients_index <- seq(1, length(levels(sysdimet$SUBJECT_ID)), 5)
 plot_patients <- levels(sysdimet$SUBJECT_ID)[plot_patients_index]
@@ -728,7 +728,7 @@ This table summarizes how accurately we can predict if blood concenration increa
 ```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE}
 library(ggplot2)
 library(gridExtra)
-library(grid)
+#library(grid)
 
 class_sum.mat <- readRDS("evaluations/Class-matrix1.rds")
 
