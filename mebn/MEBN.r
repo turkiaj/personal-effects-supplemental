@@ -487,7 +487,7 @@ mebn.expfam_dens_overlays <- function(target_models_dirs, target_variables, data
   library(bayesplot)
   library(ggplot2)
 
-  color_scheme_set("gray")
+  color_scheme_set("purple")
   bayesplot_theme_set(theme_bw())
   
   dens_plots <- list()
@@ -509,8 +509,8 @@ mebn.expfam_dens_overlays <- function(target_models_dirs, target_variables, data
     
     dens_plots[[i]] <- ppc_dens_overlay(true_value, posterior_y_50) + 
       coord_cartesian(xlim = c(scalemin,scalemax)) +
-      ggtitle(targetname) + 
-      theme_bw()
+      ggtitle(targetname) 
+      #theme_bw()
     
     i <- i + 1
   }

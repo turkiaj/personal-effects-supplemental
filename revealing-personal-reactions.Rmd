@@ -86,7 +86,7 @@ plot_patients <- levels(sysdimet$SUBJECT_ID)[plot_patients_index]
 sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 ```
 
-```{r spagettiplot_fshdl, eval = RenderArticleFigures, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
+```{r spagettiplot_fshdl, eval = TRUE, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
 # Fig. 1 in article
 
 hdlplot <- ggplot() +
@@ -94,9 +94,9 @@ hdlplot <- ggplot() +
   scale_x_discrete(limits=c(-1,0,3,4,7,8,11,12)) +
   geom_vline(xintercept =c(0, 4,8,12)) + 
   annotate("rect",xmin=c(-1,3,7,11), xmax=c(0,4,8,12), ymin=-Inf, ymax=Inf, alpha = .2) + 
-  labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank()) +
-  scale_colour_grey() +
-  theme_bw()
+  labs(x = "Week", y = "HDL-chol. (mmol/l)") + theme(axis.title.x = element_blank()) 
+  #scale_colour_grey() +
+  #theme_bw()
 
 
 #  geom_rect(aes(xmin=3, xmax=4, ymin=0.5, ymax=Inf)) + 
@@ -508,7 +508,7 @@ expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
 
-```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
 source("mebn/MEBN.r")
 
 expfam_ar1_rhs_dirs2 <- assumedtargets
@@ -1349,7 +1349,7 @@ write.graph(personal_graph2, "graphs/personal_insample_graph_s104.graphml", "gra
 
 We can then compare the visualizations of the personal reaction graphs. The effect of cholesterol medication is most significant difference, but other differences exist as well.
 
-```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
 personal_graph1 <- read.graph("graphs/personal_insample_graph_s01.graphml", "graphml")
