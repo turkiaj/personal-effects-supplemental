@@ -86,7 +86,7 @@ plot_patients <- levels(sysdimet$SUBJECT_ID)[plot_patients_index]
 sysdimet_every_10th <- sysdimet[sysdimet$SUBJECT_ID %in% plot_patients,]
 ```
 
-```{r spagettiplot_fshdl, eval = TRUE, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
+```{r spagettiplot_fshdl, eval = FALSE, echo=FALSE, fig.align="left", fig.height=2, fig.width=5, message=FALSE}
 # Fig. 1 in article
 
 hdlplot <- ggplot() +
@@ -508,7 +508,7 @@ expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
 
-```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
+```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 
 expfam_ar1_rhs_dirs2 <- assumedtargets
