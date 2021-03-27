@@ -652,7 +652,7 @@ nrmse.df <- cbind(nrmse.df, apply(nrmse.mat[,2:7], 2, as.numeric))[,2:8]
 
 #label.df <- as.data.frame(paste0(colnames(nrmse.mat)[2:7], " ", sprintf(as.numeric(nrmse.mat[6,2:7]), fmt = '%#.3f')))
 #label.df <- as.data.frame(colnames(nrmse.mat)[2:7])
-label.df <- as.data.frame(c("cholesterol","","fsins","","fpgluk","mean"))
+label.df <- as.data.frame(c("cholesterol","","insulin","","glocose","mean"))
 label.df <- cbind(label.df, as.numeric(nrmse.mat[7,2:7]))
 colnames(label.df) <- c("label", "value")
 
@@ -663,7 +663,7 @@ ggplot(nrmse.df, show.legend = FALSE) +
   geom_line(aes(y = fskol, x = model, group=1), size=0.3) +
   geom_line(aes(y = fpgluk, x = model, group=1), size=0.3) +
   geom_line(aes(y = mean, x = model, group=1), size=1) +
-  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS CV", y = value, hjust = .2, vjust = (label == "fpgluk")*1.0+1.0), size = 3) +
+  geom_text(data = label.df, aes(label = label, x = "EXPFAM AR(1) RHS CV", y = value, hjust = .2, vjust = (label == "glocose")*1.0+1.0), size = 3) +
   scale_y_continuous() +
   labs(x = "", y = "NRMSE") + 
   coord_flip() +
@@ -809,11 +809,11 @@ class.df <- rbind(class.df, xgboost.df)
 # Add response column for all methods
 class.df$Concentration <- rep(rownames(class_sum.mat), 4)
 
-class.df$Concentration <- gsub("fshdl", "fS-HDL", class.df$Concentration)
-class.df$Concentration <- gsub("fsldl", "fS-LDL", class.df$Concentration)
-class.df$Concentration <- gsub("fsins", "fS-Ins", class.df$Concentration)
-class.df$Concentration <- gsub("fskol", "fS-Chol", class.df$Concentration)
-class.df$Concentration <- gsub("fpgluk", "fP-Gluc", class.df$Concentration)
+class.df$Concentration <- gsub("fshdl", "HDL-chol", class.df$Concentration)
+class.df$Concentration <- gsub("fsldl", "LDL-chol", class.df$Concentration)
+class.df$Concentration <- gsub("fsins", "Insulin", class.df$Concentration)
+class.df$Concentration <- gsub("fskol", "Total chol.", class.df$Concentration)
+class.df$Concentration <- gsub("fpgluk", "Glucose", class.df$Concentration)
 
 saveRDS(class.df, "evaluations/classification_accuracy.rds")
 
@@ -1025,26 +1025,6 @@ grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
 
 ```
 
-```{r personal_effects_table}
-
-effects_table.df <- data.frame(Effect <- ordered_typical_effects$effect, row.names = NULL)
-effects_table.df$Variance <- ordered_typical_effects$variance
-
-kable(effects_table.df, booktabs = T) %>%
-  kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
-  row_spec(0,bold=TRUE) 
-
-#kable(summary_table.df, "latex", booktabs = T) %>%
-#  kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
-#  row_spec(0,bold=TRUE) %>%
-#  column_spec(1, width = "10em") %>%
-#  save_kable(file = "tables/Prediction_comparison_table.pdf", keep_tex = TRUE)
-
-
-```
-
-
-
 These are the effect with most difference between subjects. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
 
 ```{r personal_variations_figure, fig.height = 5, fig.align = "left", cache = FALSE, fig.cap="Graph visualization of inter-subject variation in nutritional effects. The effect of energy intake has one of the largest inter-subject variances at insulin response."}
@@ -1071,6 +1051,9 @@ feature_index <- c(1:nrow(assumedpredictors))
 personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
+# This is used in table
+personal.df <- data.frame(effect = character(0), value = numeric(0), value_lCI = numeric(0), value_uCI = numeric(0), row.names = NULL)
+
 # Use non-shrinked model for clusters, so that they match to typical effects
 
 expfam_ar1_dirs <- assumedtargets
@@ -1078,6 +1061,8 @@ expfam_ar1_dirs$modelcache <- "models/BLMM_gamma/ar1"
 expfam_ar1_dirs[expfam_ar1_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1"
 
 #modelcache <- "BLMM_gamma/ar1/"
+
+patients <- length(unique(sysdimet$SUBJECT_ID))
 
 # We could fetch a personal graph for all patients, but it is more effective to extract estimations directly from MCMC-samples to data frames
 
@@ -1097,6 +1082,21 @@ for (i in c(1:nrow(assumedtargets)))
   # - b has intercept as first column, so the index needs to be adjusted
   b_blmm <- b_blmm[,feature_index+1] 
   beta_b_blmm <- beta_b_blmm[,feature_index] 
+
+  #
+  targetdesc <- as.vector(assumedtargets[i,]$Description)
+  
+  for (p in c(1:nrow(assumedpredictors)))
+  {
+    preddesc <- assumedpredictors[p,]$Description
+    effectname <- paste0(preddesc, " -> ", targetdesc)
+    
+    for (s in 1:patients)
+    {
+      personal_quants <- quantile(posterior$personal_effect[,s,p], c(0.05,0.50,0.95))
+      personal.df <- rbind(personal.df, c(effectname,personal_quants[2],personal_quants[1],personal_quants[3]))
+    }
+  }
   
   if (i == 1) {
     # variance of the intercept is omitted
@@ -1110,7 +1110,78 @@ for (i in c(1:nrow(assumedtargets)))
   }
 }
 
+# Seek minimum and maximum of personal effects
+
+colnames(personal.df) <- c("effect","personal_value","value_lCI","value_uCI")
+personal.df$personal_value <- as.numeric(personal.df$personal_value)
+personal.df$value_lCI <- as.numeric(personal.df$value_lCI)
+personal.df$value_uCI <- as.numeric(personal.df$value_uCI)
+
+personal_max_effects.df <- personal.df %>% 
+  group_by(effect) %>%
+  arrange(desc(personal_value)) %>%
+  filter(row_number()==1) %>%
+  rename(personal_max = personal_value, max_lCI = value_lCI, max_uCI = value_uCI) %>%
+  as.data.frame()
+
+personal_min_effects.df <- personal.df %>% 
+  group_by(effect) %>%
+  arrange(personal_value) %>%
+  filter(row_number()==1) %>%
+  rename(personal_min = personal_value, min_lCI = value_lCI, min_uCI = value_uCI) %>%
+  as.data.frame()
+
 ```
+
+Summary of findings as a table
+
+```{r personal_effects_table}
+
+effects_table.df <- data.frame(effect <- ordered_typical_effects$effect, row.names = NULL)
+effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_table.df$effect)
+
+# join beta_rhs
+effects_table.df <- effects_table.df %>% 
+  inner_join(ordered_typical_effects_rhs) %>%
+  transmute(effect = effect, beta_rhs = paste0(round(strength,2)," [",round(effect_lCI,2),"; ",round(effect_uCI,2),"]"))
+
+effects_table.df$nutrient <- sapply(strsplit(ordered_typical_effects$effect, " -> "), function(x) x[1])
+effects_table.df$conc <- sapply(strsplit(ordered_typical_effects$effect, " -> "), function(x) x[2])
+effects_table.df$beta <- paste0(round(ordered_typical_effects$strength,2)," [",round(ordered_typical_effects$effect_lCI,2),"; ",round(ordered_typical_effects$effect_uCI,2),"]")
+effects_table.df$variance <- paste0(round(ordered_typical_effects$variance,2)," [",round(ordered_typical_effects$variance_lCI,2),"; ",round(ordered_typical_effects$variance_uCI,2),"]")
+
+# join the personal min-max to table
+effects_table.df <- effects_table.df %>%
+  inner_join(personal_min_effects.df) %>%
+  inner_join(personal_max_effects.df) 
+
+effects_table.df$min_beta_b <- paste0(round(effects_table.df$personal_min,2)," [",round(effects_table.df$min_lCI,2),"; ",round(effects_table.df$min_uCI,2),"]")
+effects_table.df$max_beta_b <- paste0(round(effects_table.df$personal_max,2)," [",round(effects_table.df$max_lCI,2),"; ",round(effects_table.df$max_uCI,2),"]")
+
+# order by inter-subject variance
+effects_table.df$var <- ordered_typical_effects$variance
+effects_table.df <- effects_table.df[order(effects_table.df$variance, decreasing = TRUE),]
+effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_table.df$effect)
+
+# remove effect and var columns
+effects_table.df <- effects_table.df[,c("nutrient","conc","variance","min_beta_b","max_beta_b")]
+rownames(effects_table.df) <- NULL
+
+kable(effects_table.df, booktabs = T, row.names = FALSE, 
+  col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation ($\\hat{\\sigma_b}$)", "Min. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)", "Max. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)")) %>%
+  kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
+  row_spec(0,bold=TRUE) 
+
+kable(effects_table.df, "latex", booktabs = T, row.names = FALSE, escape = F, align="llrrrrrr",
+      col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation, $\\hat{\\sigma_b}$", "Min.", "Max.")) %>%
+  add_header_above(c(" " = 5, "Personal effect, $\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$ and 90\\% CI" = 2), escape = F) %>%
+  kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
+  row_spec(0,bold=TRUE) %>%
+  save_kable(file = "tables/Effects_table.pdf", keep_tex = TRUE)
+```
+
+
+
 
 ```{r, echo=FALSE, eval=TRUE, fig.height=3, fig.cap="The elbow plot of k-means clustering shows that difference between clusters decreases when more than four clusters are considered. These clusters include all the predictors, nutrients and the cholesterol lowering medication."}
 library(stats)
