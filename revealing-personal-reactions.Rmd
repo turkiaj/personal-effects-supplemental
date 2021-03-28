@@ -1052,7 +1052,7 @@ personal_variations_from_mean <- matrix(NA, ncol=length(feature_index)*nrow(assu
 personal_effects <- matrix(NA, ncol=length(feature_index)*nrow(assumedtargets), nrow=length(levels(sysdimet$SUBJECT_ID)))
 
 # This is used in table
-personal.df <- data.frame(effect = character(0), value = numeric(0), value_lCI = numeric(0), value_uCI = numeric(0), row.names = NULL)
+personal_vagueprior.df <- data.frame(effect = character(0), value = numeric(0), value_lCI = numeric(0), value_uCI = numeric(0), row.names = NULL)
 
 # Use non-shrinked model for clusters, so that they match to typical effects
 
@@ -1094,7 +1094,7 @@ for (i in c(1:nrow(assumedtargets)))
     for (s in 1:patients)
     {
       personal_quants <- quantile(posterior$personal_effect[,s,p], c(0.05,0.50,0.95))
-      personal.df <- rbind(personal.df, c(effectname,personal_quants[2],personal_quants[1],personal_quants[3]))
+      personal_vagueprior.df <- rbind(personal_vagueprior.df, c(effectname,personal_quants[2],personal_quants[1],personal_quants[3]))
     }
   }
   
@@ -1110,30 +1110,91 @@ for (i in c(1:nrow(assumedtargets)))
   }
 }
 
-# Seek minimum and maximum of personal effects
+```
 
-colnames(personal.df) <- c("effect","personal_value","value_lCI","value_uCI")
-personal.df$personal_value <- as.numeric(personal.df$personal_value)
-personal.df$value_lCI <- as.numeric(personal.df$value_lCI)
-personal.df$value_uCI <- as.numeric(personal.df$value_uCI)
+```{r}
+# For sensitivity analysis of priors, collect also the personal effects from RHS model
+personal_rhsprior.df <- data.frame(effect = character(0), value = numeric(0), value_lCI = numeric(0), value_uCI = numeric(0), row.names = NULL)
 
-personal_max_effects.df <- personal.df %>% 
+expfam_ar1_rhs_dirs <- assumedtargets
+expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
+expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
+
+patients <- length(unique(sysdimet$SUBJECT_ID))
+
+# We could fetch a personal graph for all patients, but it is more effective to extract estimations directly from MCMC-samples to data frames
+
+for (i in c(1:nrow(assumedtargets)))
+{
+  targetname <- as.vector(assumedtargets[i,]$Name)
+  
+  modelcache <- expfam_ar1_dirs[expfam_ar1_dirs==targetname,]$modelcache
+  
+  target_blmm <- mebn.get_localfit(targetname, modelcache)
+  posterior <- rstan::extract(target_blmm, pars = c("personal_effect", "b"))
+
+  targetdesc <- as.vector(assumedtargets[i,]$Description)
+  
+  for (p in c(1:nrow(assumedpredictors)))
+  {
+    preddesc <- assumedpredictors[p,]$Description
+    effectname <- paste0(preddesc, " -> ", targetdesc)
+    
+    for (s in 1:patients)
+    {
+      personal_quants <- quantile(posterior$personal_effect[,s,p], c(0.05,0.50,0.95))
+      personal_rhsprior.df <- rbind(personal_rhsprior.df, c(effectname,personal_quants[2],personal_quants[1],personal_quants[3]))
+    }
+  }
+}
+```
+
+```{r}
+
+# Seek minimum and maximum of personal effects from both model versions (Vague and RHS prior)
+
+colnames(personal_vagueprior.df) <- c("effect","personal_value","value_lCI","value_uCI")
+personal_vagueprior.df$personal_value <- as.numeric(personal_vagueprior.df$personal_value)
+personal_vagueprior.df$value_lCI <- as.numeric(personal_vagueprior.df$value_lCI)
+personal_vagueprior.df$value_uCI <- as.numeric(personal_vagueprior.df$value_uCI)
+
+personal_max_effects_vague.df <- personal_vagueprior.df %>% 
   group_by(effect) %>%
   arrange(desc(personal_value)) %>%
   filter(row_number()==1) %>%
-  rename(personal_max = personal_value, max_lCI = value_lCI, max_uCI = value_uCI) %>%
+  rename(personal_max_vague = personal_value, max_vague_lCI = value_lCI, max_vague_uCI = value_uCI) %>%
   as.data.frame()
 
-personal_min_effects.df <- personal.df %>% 
+personal_min_effects_vague.df <- personal_vagueprior.df %>% 
   group_by(effect) %>%
   arrange(personal_value) %>%
   filter(row_number()==1) %>%
-  rename(personal_min = personal_value, min_lCI = value_lCI, min_uCI = value_uCI) %>%
+  rename(personal_min_vague = personal_value, min_vague_lCI = value_lCI, min_vague_uCI = value_uCI) %>%
+  as.data.frame()
+
+colnames(personal_rhsprior.df) <- c("effect","personal_value","value_lCI","value_uCI")
+personal_rhsprior.df$personal_value <- as.numeric(personal_rhsprior.df$personal_value)
+personal_rhsprior.df$value_lCI <- as.numeric(personal_rhsprior.df$value_lCI)
+personal_rhsprior.df$value_uCI <- as.numeric(personal_rhsprior.df$value_uCI)
+
+personal_max_effects_rhs.df <- personal_rhsprior.df %>% 
+  group_by(effect) %>%
+  arrange(desc(personal_value)) %>%
+  filter(row_number()==1) %>%
+  rename(personal_max_rhs = personal_value, max_rhs_lCI = value_lCI, max_rhs_uCI = value_uCI) %>%
+  as.data.frame()
+
+personal_min_effects_rhs.df <- personal_rhsprior.df %>% 
+  group_by(effect) %>%
+  arrange(personal_value) %>%
+  filter(row_number()==1) %>%
+  rename(personal_min_rhs = personal_value, min_rhs_lCI = value_lCI, min_rhs_uCI = value_uCI) %>%
   as.data.frame()
 
 ```
 
-Summary of findings as a table
+
+Combine summary as a data frame for tables and sensitivity analysis
 
 ```{r personal_effects_table}
 
@@ -1142,7 +1203,7 @@ effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_tabl
 
 # join beta_rhs
 effects_table.df <- effects_table.df %>% 
-  inner_join(ordered_typical_effects_rhs) %>%
+  inner_join(ordered_typical_effects_rhs, by="effect") %>%
   transmute(effect = effect, beta_rhs = paste0(round(strength,2)," [",round(effect_lCI,2),"; ",round(effect_uCI,2),"]"))
 
 effects_table.df$nutrient <- sapply(strsplit(ordered_typical_effects$effect, " -> "), function(x) x[1])
@@ -1150,25 +1211,35 @@ effects_table.df$conc <- sapply(strsplit(ordered_typical_effects$effect, " -> ")
 effects_table.df$beta <- paste0(round(ordered_typical_effects$strength,2)," [",round(ordered_typical_effects$effect_lCI,2),"; ",round(ordered_typical_effects$effect_uCI,2),"]")
 effects_table.df$variance <- paste0(round(ordered_typical_effects$variance,2)," [",round(ordered_typical_effects$variance_lCI,2),"; ",round(ordered_typical_effects$variance_uCI,2),"]")
 
-# join the personal min-max to table
+# join the personal min-max to tables of vague and rhs priors
 effects_table.df <- effects_table.df %>%
-  inner_join(personal_min_effects.df) %>%
-  inner_join(personal_max_effects.df) 
+  inner_join(personal_min_effects_vague.df, by="effect") %>%
+  inner_join(personal_max_effects_vague.df, by="effect") 
 
-effects_table.df$min_beta_b <- paste0(round(effects_table.df$personal_min,2)," [",round(effects_table.df$min_lCI,2),"; ",round(effects_table.df$min_uCI,2),"]")
-effects_table.df$max_beta_b <- paste0(round(effects_table.df$personal_max,2)," [",round(effects_table.df$max_lCI,2),"; ",round(effects_table.df$max_uCI,2),"]")
+effects_table.df <- effects_table.df %>%
+  inner_join(personal_min_effects_rhs.df, by="effect") %>%
+  inner_join(personal_max_effects_rhs.df, by="effect") 
+
+effects_table.df$min_beta_b_vague <- paste0(round(effects_table.df$personal_min_vague,2)," [",round(effects_table.df$min_vague_lCI,2),"; ",round(effects_table.df$min_vague_uCI,2),"]")
+effects_table.df$max_beta_b_vague <- paste0(round(effects_table.df$personal_max_vague,2)," [",round(effects_table.df$max_vague_lCI,2),"; ",round(effects_table.df$max_vague_uCI,2),"]")
+
+effects_table.df$min_beta_b_rhs <- paste0(round(effects_table.df$personal_min_rhs,2)," [",round(effects_table.df$min_rhs_lCI,2),"; ",round(effects_table.df$min_rhs_uCI,2),"]")
+effects_table.df$max_beta_b_rhs <- paste0(round(effects_table.df$personal_max_rhs,2)," [",round(effects_table.df$max_rhs_lCI,2),"; ",round(effects_table.df$max_rhs_uCI,2),"]")
 
 # order by inter-subject variance
 effects_table.df$var <- ordered_typical_effects$variance
+effects_table.df$var_rhs <- ordered_typical_effects_rhs$variance
 effects_table.df <- effects_table.df[order(effects_table.df$variance, decreasing = TRUE),]
 effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_table.df$effect)
 
 # remove effect and var columns
-effects_table.df <- effects_table.df[,c("nutrient","conc","variance","min_beta_b","max_beta_b")]
+effects_table.df <- effects_table.df[,c("nutrient","conc","variance","var_rhs","min_beta_b_vague","max_beta_b_vague","min_beta_b_rhs","max_beta_b_rhs")]
 rownames(effects_table.df) <- NULL
 
+effects_table.df
+
 kable(effects_table.df, booktabs = T, row.names = FALSE, 
-  col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation ($\\hat{\\sigma_b}$)", "Min. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)", "Max. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)")) %>%
+  col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation ($\\hat{\\sigma_b}$)","Var RHS", "Min. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)", "Max. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)","Min. RHS", "Max RHS")) %>%
   kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
   row_spec(0,bold=TRUE) 
 
