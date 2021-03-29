@@ -1128,7 +1128,7 @@ for (i in c(1:nrow(assumedtargets)))
 {
   targetname <- as.vector(assumedtargets[i,]$Name)
   
-  modelcache <- expfam_ar1_dirs[expfam_ar1_dirs==targetname,]$modelcache
+  modelcache <- expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs==targetname,]$modelcache
   
   target_blmm <- mebn.get_localfit(targetname, modelcache)
   posterior <- rstan::extract(target_blmm, pars = c("personal_effect", "b"))
@@ -1147,6 +1147,7 @@ for (i in c(1:nrow(assumedtargets)))
     }
   }
 }
+
 ```
 
 ```{r}
@@ -1198,18 +1199,31 @@ Combine summary as a data frame for tables and sensitivity analysis
 
 ```{r personal_effects_table}
 
-effects_table.df <- data.frame(effect <- ordered_typical_effects$effect, row.names = NULL)
+high_variance_effects <- typical_effects %>%
+  group_by(target) %>%
+  filter(variance > 0.1) %>%
+  ungroup(target) %>%
+  select(-target)
+
+high_variance_effects_rhs <- typical_effects_rhs %>%
+  group_by(target) %>%
+  filter(effect %in% high_variance_effects$effect) %>%
+  ungroup(target) %>%
+  select(-target)
+
+
+effects_table.df <- data.frame(effect <- high_variance_effects$effect, row.names = NULL)
 effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_table.df$effect)
 
 # join beta_rhs
 effects_table.df <- effects_table.df %>% 
-  inner_join(ordered_typical_effects_rhs, by="effect") %>%
+  inner_join(high_variance_effects_rhs, by="effect") %>%
   transmute(effect = effect, beta_rhs = paste0(round(strength,2)," [",round(effect_lCI,2),"; ",round(effect_uCI,2),"]"))
 
-effects_table.df$nutrient <- sapply(strsplit(ordered_typical_effects$effect, " -> "), function(x) x[1])
-effects_table.df$conc <- sapply(strsplit(ordered_typical_effects$effect, " -> "), function(x) x[2])
-effects_table.df$beta <- paste0(round(ordered_typical_effects$strength,2)," [",round(ordered_typical_effects$effect_lCI,2),"; ",round(ordered_typical_effects$effect_uCI,2),"]")
-effects_table.df$variance <- paste0(round(ordered_typical_effects$variance,2)," [",round(ordered_typical_effects$variance_lCI,2),"; ",round(ordered_typical_effects$variance_uCI,2),"]")
+effects_table.df$nutrient <- sapply(strsplit(high_variance_effects$effect, " -> "), function(x) x[1])
+effects_table.df$conc <- sapply(strsplit(high_variance_effects$effect, " -> "), function(x) x[2])
+effects_table.df$beta <- paste0(round(high_variance_effects$strength,2)," [",round(high_variance_effects$effect_lCI,2),"; ",round(high_variance_effects$effect_uCI,2),"]")
+effects_table.df$variance <- paste0(round(high_variance_effects$variance,2)," [",round(high_variance_effects$variance_lCI,2),"; ",round(high_variance_effects$variance_uCI,2),"]")
 
 # join the personal min-max to tables of vague and rhs priors
 effects_table.df <- effects_table.df %>%
@@ -1227,8 +1241,8 @@ effects_table.df$min_beta_b_rhs <- paste0(round(effects_table.df$personal_min_rh
 effects_table.df$max_beta_b_rhs <- paste0(round(effects_table.df$personal_max_rhs,2)," [",round(effects_table.df$max_rhs_lCI,2),"; ",round(effects_table.df$max_rhs_uCI,2),"]")
 
 # order by inter-subject variance
-effects_table.df$var <- ordered_typical_effects$variance
-effects_table.df$var_rhs <- ordered_typical_effects_rhs$variance
+effects_table.df$var <- high_variance_effects$variance
+effects_table.df$var_rhs <- high_variance_effects_rhs$variance
 effects_table.df <- effects_table.df[order(effects_table.df$variance, decreasing = TRUE),]
 effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_table.df$effect)
 
@@ -1236,16 +1250,26 @@ effects_table.df$effect <- factor(effects_table.df$effect, levels = effects_tabl
 effects_table.df <- effects_table.df[,c("nutrient","conc","variance","var_rhs","min_beta_b_vague","max_beta_b_vague","min_beta_b_rhs","max_beta_b_rhs")]
 rownames(effects_table.df) <- NULL
 
-effects_table.df
-
-kable(effects_table.df, booktabs = T, row.names = FALSE, 
-  col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation ($\\hat{\\sigma_b}$)","Var RHS", "Min. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)", "Max. personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)","Min. RHS", "Max RHS")) %>%
+# Supplemential table with priors compared
+kable(effects_table.df, booktabs = T, row.names = FALSE, digits = 2,
+  col.names = c("Nutrient or feature", "Concentration", "Vague prior","RHS prior", "Min.", "Max.","Min.", "Max.")) %>%
+  add_header_above(c(" " = 4, "Vague prior" = 2, "RHS prior" = 2), escape = F) %>%
+  add_header_above(c(" " = 2, "Inter-subject variation ($\\hat{\\sigma_b}$)" = 2, "Personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}})$" = 4), escape = F) %>%
   kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
-  row_spec(0,bold=TRUE) 
+  row_spec(0,bold=TRUE)
 
-kable(effects_table.df, "latex", booktabs = T, row.names = FALSE, escape = F, align="llrrrrrr",
-      col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation, $\\hat{\\sigma_b}$", "Min.", "Max.")) %>%
-  add_header_above(c(" " = 5, "Personal effect, $\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$ and 90\\% CI" = 2), escape = F) %>%
+Vague_table.df <- effects_table.df[c(1,2,3,5,6)]
+RHS_table.df <- effects_table.df[c(1,2,4,7,8)]
+
+#nrow(Vague_table.df)
+
+# Article table
+
+Vague_table.df
+
+kable(Vague_table.df, "latex", booktabs = T, row.names = FALSE, escape = F, digits = 2, align="llrrrr",
+  col.names = c("Nutrient or feature", "Concentration", "Inter-subject variation ($\\hat{\\sigma_b}$)", "Min.", "Max.")) %>%
+  add_header_above(c(" " = 3, "Personal effect ($\\hat{\\boldsymbol{\\beta}} + \\hat{\\mathbf{b}}$)" = 2), escape = F) %>%
   kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
   row_spec(0,bold=TRUE) %>%
   save_kable(file = "tables/Effects_table.pdf", keep_tex = TRUE)
