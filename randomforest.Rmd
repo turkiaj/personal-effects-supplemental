@@ -1,0 +1,225 @@
+---
+title: "Random forest comparison"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(kableExtra) # for good looking tables
+
+knitr::opts_chunk$set(echo = TRUE, fig.align="center")
+
+# this allows using tikz rendering for plots with "dev=tikz"
+knit_hooks$set(plot = function(x, options) {
+  if ('tikz' %in% options$dev && !options$external) {
+    hook_plot_tex(x, options)
+  } else hook_plot_md(x, options)
+})
+
+# Fix seed for random number generator for getting consistent results in kmeans etc.
+fixed_seed <- 678
+
+# Load common MEBN package
+source("mebn/MEBN.r")
+```
+
+```{r data_loading, echo=FALSE, message=FALSE}
+
+# Read the data description
+datadesc <- read.csv(file="data/SYSDIMET_data_description.csv", header = TRUE, sep = ";")
+
+# Read the actual data matching the description
+sysdimet <- read.csv(file="data/SYSDIMET_diet.csv", sep=";", dec=",")
+
+# Define how to iterate through the graph
+assumedpredictors <- datadesc[datadesc$Order==100,]    
+assumedtargets <- datadesc[datadesc$Order==200,] 
+```
+
+## Prediction of future blood test values with Random Forest decision tree
+
+In addition to XGBoost, we also compared the predictive accuracy to Random Forest decision tree that uses bagging instead of boosting.
+
+We prepare a dataset that contains all the predictors from past period (nutrients and last response), and also label that tells if the next response goes up or down.
+
+```{r}
+diet_input <- sysdimet
+
+# - this is not used, just the field is created
+diet_input$prev_fshdl <- diet_input[diet_input$WEEK == 0,]$fshdl
+diet_input$prev_fsldl <- diet_input[diet_input$WEEK == 0,]$fsldl
+diet_input$prev_fskol <- diet_input[diet_input$WEEK == 0,]$fskol
+diet_input$prev_fsins <- diet_input[diet_input$WEEK == 0,]$fsins
+diet_input$prev_fpgluk <- diet_input[diet_input$WEEK == 0,]$fpgluk
+
+diet_input[diet_input$WEEK == 4,]$prev_fshdl <- diet_input[diet_input$WEEK == 0,]$fshdl
+diet_input[diet_input$WEEK == 8,]$prev_fshdl <- diet_input[diet_input$WEEK == 4,]$fshdl
+diet_input[diet_input$WEEK == 12,]$prev_fshdl <- diet_input[diet_input$WEEK == 8,]$fshdl
+
+diet_input[diet_input$WEEK == 4,]$prev_fsldl <- diet_input[diet_input$WEEK == 0,]$fsldl
+diet_input[diet_input$WEEK == 8,]$prev_fsldl <- diet_input[diet_input$WEEK == 4,]$fsldl
+diet_input[diet_input$WEEK == 12,]$prev_fsldl <- diet_input[diet_input$WEEK == 8,]$fsldl
+
+diet_input[diet_input$WEEK == 4,]$prev_fskol <- diet_input[diet_input$WEEK == 0,]$fskol
+diet_input[diet_input$WEEK == 8,]$prev_fskol <- diet_input[diet_input$WEEK == 4,]$fskol
+diet_input[diet_input$WEEK == 12,]$prev_fskol <- diet_input[diet_input$WEEK == 8,]$fskol
+
+diet_input[diet_input$WEEK == 4,]$prev_fsins <- diet_input[diet_input$WEEK == 0,]$fsins
+diet_input[diet_input$WEEK == 8,]$prev_fsins <- diet_input[diet_input$WEEK == 4,]$fsins
+diet_input[diet_input$WEEK == 12,]$prev_fsins <- diet_input[diet_input$WEEK == 8,]$fsins
+
+diet_input[diet_input$WEEK == 4,]$prev_fpgluk <- diet_input[diet_input$WEEK == 0,]$fpgluk
+diet_input[diet_input$WEEK == 8,]$prev_fpgluk <- diet_input[diet_input$WEEK == 4,]$fpgluk
+diet_input[diet_input$WEEK == 12,]$prev_fpgluk <- diet_input[diet_input$WEEK == 8,]$fpgluk
+
+# remove week 0 from training
+#diet_input <- diet_input[diet_input$WEEK >= 4,]
+
+# correct fields for training
+input_cols <- list()
+input_cols[["fshdl"]] <- c(as.vector(assumedpredictors$Name), "prev_fshdl")
+input_cols[["fsldl"]] <- c(as.vector(assumedpredictors$Name), "prev_fsldl")
+input_cols[["fskol"]] <- c(as.vector(assumedpredictors$Name), "prev_fskol")
+input_cols[["fsins"]] <- c(as.vector(assumedpredictors$Name), "prev_fsins")
+input_cols[["fpgluk"]] <- c(as.vector(assumedpredictors$Name), "prev_fpgluk")
+
+# Target 
+# 0 - next blood test measurement is same or lower than previous
+# 1 - next blood test measurement is higher than previous
+
+diet_target <- sysdimet
+
+# - target is the change from previous measurements
+# for every patient, week 12 is replaced by change from week 8 to week 12, etc
+diet_target[diet_target$WEEK == 12,]$fshdl <- diet_target[diet_target$WEEK == 12,]$fshdl - diet_target[diet_target$WEEK == 8,]$fshdl
+diet_target[diet_target$WEEK == 8,]$fshdl <- diet_target[diet_target$WEEK == 8,]$fshdl - diet_target[diet_target$WEEK == 4,]$fshdl
+diet_target[diet_target$WEEK == 4,]$fshdl <- diet_target[diet_target$WEEK == 4,]$fshdl - diet_target[diet_target$WEEK == 0,]$fshdl
+
+diet_target[diet_target$WEEK == 12,]$fsldl <- diet_target[diet_target$WEEK == 12,]$fsldl - diet_target[diet_target$WEEK == 8,]$fsldl
+diet_target[diet_target$WEEK == 8,]$fsldl <- diet_target[diet_target$WEEK == 8,]$fsldl - diet_target[diet_target$WEEK == 4,]$fsldl
+diet_target[diet_target$WEEK == 4,]$fsldl <- diet_target[diet_target$WEEK == 4,]$fsldl - diet_target[diet_target$WEEK == 0,]$fsldl
+
+diet_target[diet_target$WEEK == 12,]$fskol <- diet_target[diet_target$WEEK == 12,]$fskol - diet_target[diet_target$WEEK == 8,]$fskol
+diet_target[diet_target$WEEK == 8,]$fskol <- diet_target[diet_target$WEEK == 8,]$fskol - diet_target[diet_target$WEEK == 4,]$fskol
+diet_target[diet_target$WEEK == 4,]$fskol <- diet_target[diet_target$WEEK == 4,]$fskol - diet_target[diet_target$WEEK == 0,]$fskol
+
+diet_target[diet_target$WEEK == 12,]$fsins <- diet_target[diet_target$WEEK == 12,]$fsins - diet_target[diet_target$WEEK == 8,]$fsins
+diet_target[diet_target$WEEK == 8,]$fsins <- diet_target[diet_target$WEEK == 8,]$fsins - diet_target[diet_target$WEEK == 4,]$fsins
+diet_target[diet_target$WEEK == 4,]$fsins <- diet_target[diet_target$WEEK == 4,]$fsins - diet_target[diet_target$WEEK == 0,]$fsins
+
+diet_target[diet_target$WEEK == 12,]$fpgluk <- diet_target[diet_target$WEEK == 12,]$fpgluk - diet_target[diet_target$WEEK == 8,]$fpgluk
+diet_target[diet_target$WEEK == 8,]$fpgluk <- diet_target[diet_target$WEEK == 8,]$fpgluk - diet_target[diet_target$WEEK == 4,]$fpgluk
+diet_target[diet_target$WEEK == 4,]$fpgluk <- diet_target[diet_target$WEEK == 4,]$fpgluk - diet_target[diet_target$WEEK == 0,]$fpgluk
+
+# - only the sign of change as label for learning
+diet_target$fshdl <- sign(diet_target$fshdl)
+diet_target$fsldl <- sign(diet_target$fsldl)
+diet_target$fskol <- sign(diet_target$fskol)
+diet_target$fsins <- sign(diet_target$fsins)
+diet_target$fpgluk <- sign(diet_target$fpgluk)
+
+# remove week 0 from target
+#diet_target <- diet_target[diet_target$WEEK >= 4,]
+
+# fix -1 sign to 0 label
+diet_target[diet_target$fshdl == -1,]$fshdl <- 0
+diet_target[diet_target$fsldl == -1,]$fsldl <- 0
+diet_target[diet_target$fskol == -1,]$fskol <- 0
+diet_target[diet_target$fsins == -1,]$fsins <- 0
+diet_target[diet_target$fpgluk == -1,]$fpgluk <- 0
+
+```
+
+Likewise to the Bayesian network, also now a separate RF model is trained for each blood test. 
+
+Tarviiko RF hyperparameter-tuningia?
+
+XGBoost algorithm has multiple hyperparameters for specifying the model search. Following script implements search of best hyperparameters for each model. Parameters are searched with cross-validation so that any specific data partitioning to training and test sets don't affect the result.  
+
+```{r}
+#install.packages("randomForest")
+
+library(randomForest)
+library(dplyr)
+
+eval.mat <- matrix(0,ncol=2,nrow=0)
+
+n_folds <- 10
+folds <- cut(seq(1,nrow(diet_input)),breaks=n_folds,labels=FALSE)
+
+for (target in assumedtargets$Name)
+{
+  for (f in 1:n_folds)
+  {
+    model_input <- diet_input[input_cols[[target]]]
+    test.index <- which(folds==f,arr.ind=TRUE)
+    
+    test.df <- cbind(model_input[test.index,], diet_target[test.index,][target])
+    test.df[[target]] <- factor(test.df[[target]])
+
+    train.df <- cbind(model_input[-test.index,], diet_target[-test.index,][target])
+    train.df[[target]] <- factor(train.df[[target]])
+    
+    # target is defined as factor so that we do classification and not regression
+      
+    rf <- randomForest(
+      formula = as.formula(paste0(target, " ~ .")),
+      data = train.df
+    )
+    
+    pred <- predict(rf, newdata = test.df)
+  
+    CM = table(pred, test.df[[target]])
+  
+    accuracy = (sum(diag(CM)))/sum(CM)
+  
+    # Cumulate result matrix
+    eval.mat <- rbind(eval.mat, c(target, accuracy))
+  }
+
+}
+
+eval.df <- data.frame(conc = eval.mat[,1], acc = eval.mat[,2])  
+eval.df$acc <- as.numeric(eval.df$acc)
+
+cv_eval.df <- eval.df %>% 
+  group_by(conc) %>%
+  summarise(cv_acc = mean(acc)) %>%
+  as.data.frame()
+  
+```
+
+```{r}
+class.df <- readRDS("evaluations/classification_accuracy.rds")
+
+# New data frame for table
+methods <- c(unique(class.df[2]))
+
+# Pick random forest results in same order and format than others
+methods$Method <- c(methods$Method, "Random Forest CV")
+cv_eval.df$perc <- round(cv_eval.df$cv_acc*100,0)
+
+class.df <- rbind(class.df, c(cv_eval.df[cv_eval.df$conc=="fshdl",]$perc,"Random Forest CV","HDL-chol."))
+class.df <- rbind(class.df, c(cv_eval.df[cv_eval.df$conc=="fsldl",]$perc,"Random Forest CV","LDL-chol."))
+class.df <- rbind(class.df, c(cv_eval.df[cv_eval.df$conc=="fsins",]$perc,"Random Forest CV","Insulin"))
+class.df <- rbind(class.df, c(cv_eval.df[cv_eval.df$conc=="fpgluk",]$perc,"Random Forest CV","Glucose"))
+class.df <- rbind(class.df, c(cv_eval.df[cv_eval.df$conc=="fskol",]$perc,"Random Forest CV","Total chol."))
+
+summary_table.df <- data.frame(Method <- methods$Method, row.names = NULL)
+summary_table.df$"HDL-chol." <- paste0(class.df[class.df$Concentration == "HDL-chol.",]$Accuracy,"%")
+summary_table.df$"LDL-chol." <- paste0(class.df[class.df$Concentration == "HDL-chol.",]$Accuracy,"%")
+summary_table.df$"Insulin" <- paste0(class.df[class.df$Concentration == "Insulin",]$Accuracy,"%")
+summary_table.df$"Glucose" <- paste0(class.df[class.df$Concentration == "Glucose",]$Accuracy,"%")
+summary_table.df$"Total chol." <- paste0(class.df[class.df$Concentration == "Total chol.",]$Accuracy,"%")
+
+colnames(summary_table.df) <- c("Method","HDL-chol.","LDL-chol.","Insulin","Glucose","Total chol.")
+
+kable(summary_table.df, booktabs = T) %>%
+  add_header_above(c(" " = 1,"Prediction accuracy for the direction of change" = 5)) %>%
+  kable_styling(latex_options = c("basic", "condensed"), full_width = FALSE) %>%
+  row_spec(0,bold=TRUE) 
+
+```
+
+
+
