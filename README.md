@@ -8,7 +8,8 @@ Repository contents:
 - revealing-personal-reactions.pdf  - PDF extract of the main supplementary document
 - revealing-personal-reactions.Rmd  - Main supplementary document in RMarkdown 
 - cross-validation.Rmd              - Separated RMarkdown notebook for executing cross-validation. The results are shown in the main document.
-- xgboost.Rmd                       - Separated RMarkdown notebook for executing XGBoost model against the same data. The results are shown in the main document.
+- xgboost.Rmd                       - Separated RMarkdown notebook for comparing XGBoost model against the same data. The results are shown in the main document.
+- randomforest.Rmd                  - Separated RMarkdown notebook for comparing Random Forest decision tree with MEBN and XGBoost.
 - data/                             - Folder including Sysdimet-dataset that is used in the analysis
 - evaluations/                      - cross-validation.Rmd and xgboost.Rmd output their results in this folder for the main document
 - mebn/MEBN.r                       - Reusable R-function library for constructing Mixed-effect Bayesian networks
@@ -27,6 +28,7 @@ Execution of the RMarkdown notebooks require R version 3.6 (https://cran.r-proje
 - ggplot2 (https://cran.r-project.org/web/packages/ggplot2)
 - gridExtra (https://cran.r-project.org/web/packages/gridExtra)
 - xgboost (https://cran.r-project.org/web/packages/xgboost)
+- randomForest (https://cran.r-project.org/web/packages/randomForest)
 - stats
 
 ..

@@ -1209,23 +1209,31 @@ mebn.plot_clusters <- function(cluster_data, cluster_spread, clusters_index, ass
   # Replace arror characters with an arrow symbol
   #plot_data$effect <- sub("->", sprintf("\u21D2"), plot_data$effect)
   
+  # grey colors: 
+  # scale_fill_manual(values = c("#333333", "#999999")) 
+  
+  # color:
+  # scale_fill_manual(values = c("#D01C1F", "#4B878B")) 
+  
   if (sort_by_amount == TRUE) {
-    ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
+    p <- ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
       geom_bar(stat='identity', aes(fill=below_above), width=.5, show.legend = FALSE) +
-      scale_fill_manual(values = c("#333333", "#999999")) +
+      scale_fill_manual(values = c("#D01C1F", "#4B878B")) +
       coord_flip() +
       facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels)) +
       theme_bw() +
       theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) 
   } else {  
-    ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
+    p <- ggplot(plot_data, aes(x=reorder(effect, amount), y=amount)) + 
       geom_bar(stat='identity', aes(fill=below_above), width=.5, show.legend = FALSE) +
-      scale_fill_manual(values = c("#333333", "#999999")) +
+      scale_fill_manual(values = c("#D01C1F", "#4B878B")) +
       coord_flip() +
       facet_wrap(~cluster, labeller = labeller(cluster = cluster_labels)) +
       theme_bw() +
       theme(axis.title.x = element_blank(), axis.title.y = element_blank(), text=element_text(size=9)) 
   }  
+  
+  p
 }
 
 ##################################################

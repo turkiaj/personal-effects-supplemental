@@ -1,0 +1,48 @@
+\documentclass[border=1mm, preview]{standalone}
+\usepackage[active,tightpage]{preview}
+\usepackage{varwidth}
+\usepackage{amssymb, amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e}
+\usepackage{polyglossia}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage[normalem]{ulem}
+\usepackage[utf8]{inputenc}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{xltxtra,xunicode}
+\usepackage{xcolor}
+\begin{document}
+\begin{table}[H]
+\centering
+\begin{tabular}{l>{\raggedright\arraybackslash}p{13em}llllll}
+\toprule
+\multicolumn{2}{c}{ } & \multicolumn{6}{c}{NRMSE} \\
+\cmidrule(l{3pt}r{3pt}){3-8}
+\textbf{ } & \textbf{Model} & \textbf{HDL-chol.} & \textbf{LDL-chol.} & \textbf{Insulin} & \textbf{Total chol.} & \textbf{Glucose} & \textbf{BN Mean}\\
+\midrule
+ & Normal & 0.04 & 0.06 & 0.22 & 0.06 & 0.06 & 0.09\\
+ & Gamma & 0.02 & 0.06 & 0.28 & 0.05 & 0.03 & 0.09\\
+ & Gamma AR(1) & 0.01 & 0.03 & 0.27 & 0.04 & 0.03 & 0.07\\
+ & Gamma AR(1) RHS & 0.01 & 0.03 & 0.29 & 0.04 & 0.03 & 0.08\\
+ & EXPFAM AR(1) & 0.01 & 0.03 & 0.23 & 0.04 & 0.03 & 0.07\\
+\addlinespace
+ & EXPFAM AR(1) RHS & 0.01 & 0.03 & 0.23 & 0.04 & 0.03 & 0.07\\
+ & Gamma AR(1) RHS CV & 0.02 & 0.05 & 0.44 & 0.06 & 0.05 & 0.12\\
+ & EXPFAM AR(1) RHS CV & 0.02 & 0.05 & 0.45 & 0.06 & 0.05 & 0.13\\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{document}

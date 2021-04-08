@@ -1,0 +1,43 @@
+\documentclass[border=1mm, preview]{standalone}
+\usepackage[active,tightpage]{preview}
+\usepackage{varwidth}
+\usepackage{amssymb, amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e}
+\usepackage{polyglossia}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage[normalem]{ulem}
+\usepackage[utf8]{inputenc}
+\usepackage{makecell}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{xltxtra,xunicode}
+\usepackage{xcolor}
+\begin{document}
+\begin{table}[H]
+\centering
+\begin{tabular}{>{\raggedright\arraybackslash}p{10em}lllll}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{5}{c}{Prediction accuracy for the direction of change} \\
+\cmidrule(l{3pt}r{3pt}){2-6}
+\textbf{Method} & \textbf{HDL-chol.} & \textbf{LDL-chol.} & \textbf{Insulin} & \textbf{Glucose} & \textbf{Total chol.}\\
+\midrule
+MEBN & 81\% & 85\% & 85\% & 74\% & 83\%\\
+MEBN RHS & 78\% & 81\% & 84\% & 70\% & 80\%\\
+MEBN RHS CV & 63\% & 67\% & 68\% & 59\% & 64\%\\
+XGBoost CV & 61\% & 69\% & 68\% & 60\% & 71\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{document}
