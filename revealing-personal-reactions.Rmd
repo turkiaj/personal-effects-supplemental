@@ -822,7 +822,7 @@ class.df$Concentration <- gsub("fpgluk", "Glucose", class.df$Concentration)
 
 ```
 
-```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE}
+```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE, fig.cap="Different modeling methods were compared in a classification test where the direction of change for future concentration is predicted based on its past value and past diet. The proposed mixed-effect Bayesian network (MEBN) is compared with Extreme Gradient Boosting (XGBoost) decision tree method. The best-fitting EXPFAM AR(1) model version is used in this comparison with and without shrinkage prior (RHS). Cross-validated (CV) prediction accuracy is similar for both methods. The in-sample accuracy of MEBN is substantially higher, and these estimates are used in drawing conclusions at the clustering and personal models in this article."}
 prediction_accuracy_plot <- ggplot() +
   geom_col(data = class.df, aes(x=Concentration, y=Accuracy, fill=Method), position = position_dodge(width = 0.9)) +
   scale_y_discrete(limits=seq(0,100,10), labels = paste0(seq(0,100,10), "%")) +
@@ -1324,34 +1324,9 @@ By looking previous diagram we see that there are four clearly identifiable grou
 
 At this plot, zero of X-axis denotes a typical behavior of that particular reaction, and bars denote a deviation from this typical mean.
 
-```{r variation clusters1, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
-source("mebn/MEBN.r")
-
-# Number of cluster centers 
-k <- 4
-
-# Clustering using k-means
-set.seed(fixed_seed)
-km <- kmeans(personal_variations_from_mean, centers = k)
-
-# Every patient can be assigned to some cluster based on how their reactions differ from average
-sysdimet$variation_group <- km$cluster 
-
-# Plot the clusters
-variations_data <- as.data.frame(t(km$centers))
-cluster_index <- seq(1:k)
-cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
-
-p <- mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
-#ggsave("figures/personal_effect_clusters_all-1.pdf", plot = p, width = 4, height = 5)
-
-```
-
 Cholesterol medication seems to dominate the clusters. There are subjects for who cholesterol medication raises the blood insulin levels more than on average and for other group the raise is less than on average.
 
-Let's see how the clustering shows with absolute effects rather than difference from mean. Note that these are not the greatest effects, but those with most personal variance.
-
-```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
+```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four most clearly separating clusters of personal reactions when all the predictors are considered, including cholesterol medication. The clustering is done for posterior means of personal effects. The effect of cholesterol-lowering medication to the insulin concentration dominates the personally varying effects. Besides decreasing the cholesterol concentration, the medication has a side effect of increasing insulin concentration for most of the subjects. Yet, there exists a large variation. The increasing effect is dramatic for 6,6\\% of the subjects in cluster 4, but for 10,4\\% of subjects in cluster 2 the effect is non-existing."}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1375,11 +1350,11 @@ cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
 
 p <- mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
 #ggsave("figures/personal_effect_clusters_nutrients-1.pdf", plot = p, width = 4, height = 5)
-
+p
 
 ```
 
-By looking at the absolute effect of the cholesterol medication it seems that there separetes two groups where one it is a significant factor in explaining blood insulin level, and other group where it does not play virtually any role. But does these subjects even take cholesterol medications? Let's create a cross tabulation of observations to explore this effect more closely.
+By looking at the absolute effect of the cholesterol medication it seems that there separates two groups where one it is a significant factor in explaining blood insulin level, and other group where it does not play virtually any role. But does these subjects even take cholesterol medications? Let's create a cross tabulation of observations to explore this effect more closely.
 
 ```{r cholmed_crosstab, echo=FALSE}
 
@@ -1404,7 +1379,7 @@ for (i in clusters) {
   fsins_avg <- c(fsins_avg, mean(sysdimet[sysdimet$effect_group == i,]$fsins))
 }  
 
-df <- cbind(clusters, fsins_avg)
+df <- cbind(clusters, round(fsins_avg,2))
 colnames(df) <- c("cluster", "average blood insulin")
 
 kable(df) %>%
@@ -1494,28 +1469,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-```{r variation clusters3, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
-source("mebn/MEBN.r")
-# Number of cluster centers 
-k <- 4
-
-# Clustering using k-means
-set.seed(fixed_seed)
-km <- kmeans(personal_variations_from_mean, centers = k)
-
-# Every subject can be assigned to some cluster based on how their reactions differ from average
-sysdimet$variation_group <- km$cluster 
-
-# Plot the clusters
-variations_data <- as.data.frame(t(km$centers))
-cluster_index <- seq(1:k)
-
-cluster_spread <- as.data.frame(table(km$cluster), stringsAsFactors = FALSE)
-mebn.plot_clusters(variations_data, cluster_spread, cluster_index, assumedpredictors, assumedtargets, effects_with_most_variance, feature_index, sort_by_amount = TRUE)
-```
-
-
-```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE}
+```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four clusters separated also when only the effects of nutrients were considered, and the cholesterol medication was left out. The modeled Bayesian network includes 110 different effects of nutrition, but these figures only show the effects that have the largest variations between the subjects. The subjects at clusters 1 and 2 react with generally different insulin concentration sensitivity. One of the specific differences in how monounsaturated fatty acids (MUFA) contributes to insulin concentrations. The cluster 3 with a small number of subjects shows also different reactions to fatty acids and fibers."}
 
 # Number of cluster centers 
 k <- 4
