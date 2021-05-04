@@ -1,7 +1,7 @@
-# Revealing the Personal Effects of Nutrition with Mixed-Effect Bayesian Network
+# Mixed-Effect Bayesian Network Reveals Personal Effects of Nutrition 
 ## Supplementary material for the article
 
-This repository contains all the data and code for preproducing the analysis and figures in the main article. The analysis is conducted in RMarkdown notebook and it contains all the details for model developing, testing and inference. All the figures at the article are produced with this notebook without any editing.
+This repository contains all the data and code for reproducing the analysis and figures in the main article. The analysis is conducted in RMarkdown notebook and it contains all the details for model developing, testing and inference. All the figures at the article are produced with this notebook without any editing.
 
 Repository contents:
 

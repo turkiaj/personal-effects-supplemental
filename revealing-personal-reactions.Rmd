@@ -1,20 +1,14 @@
 ---
-title: "Revealing Personal Effects of Nutrition with Mixed-Effect Bayesian Network"
+title: |
+  | Mixed-Effect Bayesian Network Reveals 
+  | Personal Effects of Nutrition
 author:
-- JARI TURKIA
-- School of Computing, University of Eastern Finland, 80101 Joensuu, Finland, and 
-- CGI Suomi, Joensuu, Finland, jari.turkia@cgi.com
-- - 
-- VILLE HAUTAMÄKI, LAURI MEHTÄTALO
-- School of Computing, University of Eastern Finland, 80101 Joensuu, Finland
-- -
-- URSULA SCHWAB
-- School of Medicine, Institute of Public Health and Clinical Nutrition,
-- University of Eastern Finland, Kuopio, Finland, and 
-- Department of Medicine, Endocrinology and Clinical Nutrition, 
-- Kuopio University Hospital, Kuopio, Finland
+- JARI TURKIA^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland, and CGI Suomi, Joensuu, Finland, correspondence jari.turkia@cgi.com]
+- LAURI MEHTÄTALO^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland]
+- URSULA SCHWAB^[School of Medicine, Institute of Public Health and Clinical Nutrition, University of Eastern Finland, Kuopio, Finland, and Department of Medicine, Endocrinology and Clinical Nutrition, Kuopio University Hospital, Kuopio, Finland]
+- VILLE HAUTAMÄKI^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland]
 bibliography: biblio.bib
-output:
+output: 
   pdf_document:
     latex_engine: xelatex
     fig_caption: yes
@@ -23,8 +17,8 @@ output:
   word_document: default
   html_document: default
 subtitle: Supplementary Materials
-abstract: This notebook is supplementary material for the article "Revealing Personal
-  Effects of Nutrition with Mixed-Effect Bayesian Network". The notebook shows in
+abstract: This notebook is supplementary material for the article "Mixed-Effect Bayesian
+  Network Reveals Personal Effects of Nutrition". The notebook shows in
   detail how mixed-effect Bayesian network is constructed and how it is used to model
   the effects of nutrition. The hierarchical structure of the network model allows
   studying the effects in both typical and personal levels. In addition, it is shown
@@ -108,7 +102,7 @@ hdlplot <- ggplot() +
 
   #ggsave("figures/spagettiplot_fshdl-1.pdf", plot = hdlplot, width = 5, height = 2.5)
 
-hdlplot
+#hdlplot
 ```
 
 ```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=10, fig.width=6, message=FALSE, fig.cap="Progress of concentration levels during the 12-week study. Measurements were taken at weeks 0, 4, 8, and 12, and the food records were kept during the week before the measurement"}
@@ -180,7 +174,7 @@ When the future direction of the blood concentrations can be predicted, the typi
 
 We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. 
 
-```{r graph, fig.height = 5, fig.align = "left", fig.cap="Initial, bi-partite, network structure.", echo=FALSE, message=FALSE}
+```{r graph, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", fig.cap="Initial, bi-partite, network structure.", echo=FALSE, message=FALSE}
 library(igraph)
 initial_graph <- mebn.fully_connected_bipartite_graph(datadesc)
 
@@ -232,16 +226,16 @@ sysdimet_normal <- mebn.bipartite_model(reaction_graph = initial_graph,
 write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 ```
 
-Here we evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concenrations. As expected, normal distribution in random variables is not fitting well. Normal distribution allows non-zero probability for negative blood concenrations resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concenrations are usually more skewed to right. 
+Here we evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concentrations. As expected, normal distribution in random variables is not fitting well. Normal distribution allows non-zero probability for negative blood concentrations resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concentrations are usually more skewed to right. 
 
-```{r normal_model_ppc, fig.cap="Visual posterior predictive check of local distributions with normal distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r normal_model_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with normal distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 ```
 
 
 ## Developing the model beyond normal distributions
 
-More realistic probability distribution for blood concenrations would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
+More realistic probability distribution for blood concentrations would be Log-Normal or Gamma distributions [@10.1371/journal.pone.0021403]. They both allow only positive values and model better the right tail of individual larger values. For further development, we choose Gamma distribution with identity link function. This is important as it keeps the regression coefficients of the nutrients on the same absolute scale than with Normal models. The regression coefficients are used as weights of the edges at the Bayesian network and they all should be on the same scale regardless of the random variables' distribution. 
 
 ```{r graph_with_gamma_response, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE}
 initial_gamma_graph <- mebn.new_graph_with_randomvariables(datadesc)
@@ -263,7 +257,7 @@ write.graph(sysdimet_gamma, "graphs/sysdimet_gamma.graphml", "graphml")
 
 The visual comparison of the true and estimated distributions of blood concenrations shows that Gamma distribution follows the true distributions quite well. 
 
-```{r gamma_ppc, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
+```{r gamma_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 ```
 
@@ -298,7 +292,7 @@ write_graph(sysdimet_gamma_ar1, "graphs/sysdimet_gamma_ar1.graphml", "graphml")
 
 The autocorrelation structure seems to decrease the variance of the model and correcting the systematical estimation errors from the previous model candidate
 
-```{r gamma_ar1_ppc, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution and first-order autocorrelation process.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r gamma_ar1_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution and first-order autocorrelation process.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/ar1/", assumedtargets, sysdimet)
 ```
 
@@ -518,7 +512,7 @@ fsins_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph,
 ``` 
 
 
-```{r fsins_comparison, fig.width=6, fig.cap="Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r fsins_comparison, fig.height = 3, fig.width=5, fig.cap="Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 library(gridExtra)
 
 only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
@@ -541,7 +535,7 @@ expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
 
-```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 5, fig.width=5,fig.align = "left", message=FALSE, warning=FALSE, eval=FALSE, cache=FALSE}
+```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 
 expfam_ar1_rhs_dirs2 <- assumedtargets
@@ -870,7 +864,7 @@ We have now reached a reasonably good fit for the local distributions of the Bay
 
 Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. 
 
-```{r, typical_effects_figure, fig.height = 4, fig.cap="This visualization shows mean of posterior for typical coefficients as weight of the connection between blood concentrations and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood concentrations.", fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
+```{r, typical_effects_figure, fig.cap="This visualization shows mean of posterior for typical coefficients as weight of the connection between blood concentrations and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood concentrations.", fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
 sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
@@ -1037,7 +1031,7 @@ ggsave("figures/high_varying_effects-1.pdf", plot = p, width = 6.5, height = 5)
 
 These are the effect with most difference between subjects. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
 
-```{r personal_variations_figure, fig.height = 5, fig.align = "left", cache = FALSE, fig.cap="Graph visualization of inter-subject variation in nutritional effects. The effect of energy intake has one of the largest inter-subject variances at insulin response."}
+```{r personal_variations_figure, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", cache = FALSE, fig.cap="Graph visualization of inter-subject variation in nutritional effects. The effect of energy intake has one of the largest inter-subject variances at insulin response."}
 source("mebn/MEBN.r")
 effects_with_most_variance <- ordered_typical_effects[ordered_typical_effects$variance >= 0.30,]
 effects_with_most_variance$effect <- effects_with_most_variance$effect
@@ -1045,12 +1039,9 @@ number_of_varying_effects <- nrow(effects_with_most_variance)
 
 mebn.plot_personal_variations(sysdimet_expfam_ar1, number_of_varying_effects)
 ```
+# Sensitivity analysis
 
-# Finding the clusters of personal reaction types
-
-Although there are personal differences, it is likely that everyone is not behaving uniquely but there might exist similar groups of behavior. We can analyze personal differences in two ways. We can look the absolute magnitudes of effects and we can also look how persons differ from typical behavior or mean of the effect.
-
-We can now take the personal estimations of the effects and see, if they form clusters
+In Table 3, we provide a sensitivity analysis on how the graph estimates with either vague or shrinkage priors on beta parameters. It can be seen that standard deviations of personal effects are not sensitive to prior choice. In the actual personal effects, the shrinkage prior puts more weight on personal variations and less weight on general part of the effect.
 
 ```{r kmeans_dfs, echo=FALSE, cache=FALSE, message=FALSE}
 library(rstan)
@@ -1121,6 +1112,7 @@ for (i in c(1:nrow(assumedtargets)))
 }
 
 ```
+
 
 ```{r, echo=FALSE, message=FALSE, eval=TRUE}
 # For sensitivity analysis of priors, collect also the personal effects from RHS model
@@ -1274,6 +1266,7 @@ RHS_table.df <- effects_table.df[c(1,2,4,7,8)]
   
 ```
 
+In addition, the effect parameters with most personal variation are provided in Table 4.
 
 ```{r table3, echo=FALSE, message=FALSE, eval=TRUE}
 # Table 3 in the article
@@ -1288,8 +1281,13 @@ kable(Vague_table.df, "latex", booktabs = T, row.names = FALSE, escape = F, digi
 ```
 
 
+# Finding the clusters of personal reaction types
 
-```{r, echo=FALSE, eval=TRUE, fig.height=3, fig.cap="The elbow plot of k-means clustering shows that difference between clusters decreases when more than four clusters are considered. These clusters include all the predictors, nutrients and the cholesterol lowering medication."}
+Although there are personal differences, it is likely that everyone is not behaving uniquely but there might exist similar groups of behavior. We can analyze personal differences in two ways. We can look the absolute magnitudes of effects and we can also look how persons differ from typical behavior or mean of the effect.
+
+We can now take the personal estimations of the effects and see, if they form clusters
+
+```{r, echo=FALSE, eval=TRUE, fig.height=3, fig.width=5, fig.align = "left", fig.cap="The elbow plot of k-means clustering shows that difference between clusters decreases when more than four clusters are considered. These clusters include all the predictors, nutrients and the cholesterol lowering medication."}
 library(stats)
 library(gridExtra)
 
@@ -1567,9 +1565,9 @@ personal_graph2 <- read.graph("graphs/personal_insample_graph_s104.graphml", "gr
 
 par(mfrow=c(2,1))
 layout <- mebn.plot_personal_effects(personal_graph1, 10, graph_layout, colorImage = !RenderArticleFigures)
-title("Subject 1 from cluster 3",cex.main=0.7)
+title("Subject 1 from cluster 3 with high insulin reactions",cex.main=0.7)
 layout <- mebn.plot_personal_effects(personal_graph2, 10, graph_layout, colorImage = !RenderArticleFigures)
-title("Subject 2 from cluster 2",cex.main=0.7)
+title("Subject 2 from cluster 2 with moderate insulin reactions",cex.main=0.7)
 ```
 
 Following table compares some of the distinguishing differences between these subjects
