@@ -4,7 +4,7 @@ title: |
   | Personal Effects of Nutrition
 author:
 - JARI TURKIA^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland, and CGI Suomi, Joensuu, Finland, correspondence jari.turkia@cgi.com]
-- LAURI MEHTÄTALO^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland]
+- LAURI MEHTÄTALO^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland, and Natural Resources Institute Finland (Luke), Bioeconomy and Environment Unit, Yliopistokatu 6, 80101 Joensuu, Finland]
 - URSULA SCHWAB^[School of Medicine, Institute of Public Health and Clinical Nutrition, University of Eastern Finland, Kuopio, Finland, and Department of Medicine, Endocrinology and Clinical Nutrition, Kuopio University Hospital, Kuopio, Finland]
 - VILLE HAUTAMÄKI^[School of Computing, University of Eastern Finland, 80101 Joensuu, Finland]
 bibliography: biblio.bib
