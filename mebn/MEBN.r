@@ -418,7 +418,7 @@ mebn.AR_comparison <- function(target_variables, graphdir)
   library(rstan)
   
   ar_table<-data.frame(matrix(nrow=nrow(target_variables), ncol=4))
-  colnames(ar_table) <- c("distribution", "AR(1)", "CI-10%", "CI-90%")
+  colnames(ar_table) <- c("distribution", "AR(1)", "90%-CI lower", "90%-CI upper")
   
   n <- 1
   for (targetname in target_variables$Name)
