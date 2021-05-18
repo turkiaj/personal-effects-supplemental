@@ -825,7 +825,7 @@ class.df$Concentration <- gsub("fpgluk", "Glucose", class.df$Concentration)
 ```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE, fig.cap="Different modeling methods were compared in a classification test where the direction of change for future concentration is predicted based on its past value and past diet. The proposed mixed-effect Bayesian network (MEBN) is compared with Extreme Gradient Boosting (XGBoost) decision tree method. The best-fitting EXPFAM AR(1) model version is used in this comparison with and without shrinkage prior (RHS). Cross-validated (CV) prediction accuracy is similar for both methods. The in-sample accuracy of MEBN is substantially higher, and these estimates are used in drawing conclusions at the clustering and personal models in this article. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 prediction_accuracy_plot <- ggplot() +
   geom_col(data = class.df, aes(x=Concentration, y=Accuracy, fill=Method), position = position_dodge(width = 0.9)) +
-  scale_y_discrete(limits=seq(0,100,10), labels = paste0(seq(0,100,10), "%")) +
+  scale_y_continuous(breaks=seq(0,100,10), labels = paste0(seq(0,100,10), "%")) +
   labs(x = "Blood concentration", y = "Prediction accuracy") + theme(axis.title.x = element_blank()) +
   scale_fill_grey(start = .3, end = .7) + theme_bw()
 
@@ -1322,7 +1322,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-By looking previous diagram we see that there are four clearly identifiable groups between subjects, 
+By looking the previous elbow-plot diagram we see that there are four clearly identifiable groups between subjects.
 
 **The effect of cholesterol medication**
 
@@ -1634,6 +1634,5 @@ kable(concs, booktabs = T, row.names = FALSE, caption="Average concentration lev
   row_spec(0,bold=TRUE)
 
 ```
-
-
+\clearpage
 # References
