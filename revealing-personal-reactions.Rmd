@@ -1032,7 +1032,6 @@ p3 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=variance)) +
 
 p <- grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
 #ggsave("figures/high_varying_effects-1.pdf", plot = p, width = 6.5, height = 5)
-p
 
 ```
 
