@@ -113,7 +113,7 @@ hdlplot <- ggplot() +
 #hdlplot
 ```
 
-```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=10, fig.width=6, message=FALSE, fig.cap="Progress of concentration levels during the 12-week study. Measurements were taken at weeks 0, 4, 8, and 12, and the food records were kept during the week before the measurement"}
+```{r spagettiplot, echo=FALSE, fig.align="left", fig.height=10, fig.width=6, message=FALSE, fig.cap="Progress of concentration levels during the 12-week study. Measurements were taken at weeks 0, 4, 8, and 12, and the food records were kept during the week before the measurement. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 library(ggplot2)
 library(gridExtra)
 
@@ -182,7 +182,7 @@ When the future direction of the blood concentrations can be predicted, the typi
 
 We focus only on two-level, bipartite, graphs where nutrients and personal details are assumed to affect blood concentrations, and only the magnitude of the effect is left to be estimated. 
 
-```{r graph, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", fig.cap="Initial, bi-partite, network structure.", echo=FALSE, message=FALSE}
+```{r graph, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", fig.cap="Initial, bi-partite, network structure. The figure is plotted with iGraph package for R language (v 1.2.6, https://igraph.org/r).", echo=FALSE, message=FALSE}
 library(igraph)
 initial_graph <- mebn.fully_connected_bipartite_graph(datadesc)
 
@@ -236,7 +236,7 @@ write.graph(sysdimet_normal, "graphs/sysdimet_normal.graphml", "graphml")
 
 Here we evaluate the fit of model candidates visually by plotting the posterior predictive distributions (PPC) over the distributions of the true blood concentrations. As expected, normal distribution in random variables is not fitting well. Normal distribution allows non-zero probability for negative blood concentrations resulting the probability to leak for impossible values. Normal distribution is also symmetric while the distributions of blood concentrations are usually more skewed to right. 
 
-```{r normal_model_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with normal distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r normal_model_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with normal distribution. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot).", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_normal/", assumedtargets, sysdimet)
 ```
 
@@ -265,7 +265,7 @@ write.graph(sysdimet_gamma, "graphs/sysdimet_gamma.graphml", "graphml")
 
 The visual comparison of the true and estimated distributions of blood concenrations shows that Gamma distribution follows the true distributions quite well. 
 
-```{r gamma_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
+```{r gamma_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot).", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=FALSE}
 mebn.target_dens_overlays("BLMM_gamma/", assumedtargets, sysdimet)
 ```
 
@@ -300,7 +300,7 @@ write_graph(sysdimet_gamma_ar1, "graphs/sysdimet_gamma_ar1.graphml", "graphml")
 
 The autocorrelation structure seems to decrease the variance of the model and correcting the systematical estimation errors from the previous model candidate
 
-```{r gamma_ar1_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution and first-order autocorrelation process.", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r gamma_ar1_ppc, fig.height = 4, fig.width=5, fig.cap="Visual posterior predictive check of local distributions with Gamma distribution and first-order autocorrelation process. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot).", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/ar1/", assumedtargets, sysdimet)
 ```
 
@@ -360,7 +360,7 @@ sysdimet_gamma_ar1_rhs_pred <- mebn.bipartite_model(reaction_graph = initial_gra
 write.graph(sysdimet_gamma_ar1_rhs_pred, "graphs/sysdimet_gamma_ar1_rhs.graphml", "graphml")
 ```
 
-```{r gamma_ar1_rhs_ppc, fig.cap="Visual posterior predictive check of local distributions with Gamma AR(1) distribution and regularized horseshoe prior on common effect coefficients.", echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r gamma_ar1_rhs_ppc, fig.cap="Visual posterior predictive check of local distributions with Gamma AR(1) distribution and regularized horseshoe prior on common effect coefficients. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot).", echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 mebn.target_dens_overlays("BLMM_gamma/ar1_rhs/no_holdout/", assumedtargets, sysdimet)
 ```
 
@@ -518,7 +518,7 @@ fsins_normal_ar1_rhs <- mebn.bipartite_model(reaction_graph = initial_graph,
 ``` 
 
 
-```{r fsins_comparison, fig.height = 3, fig.width=5, fig.cap="Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
+```{r fsins_comparison, fig.height = 3, fig.width=5, fig.cap="Plot on the left is a PPC of Gamma distributed fsins-response and the right plot is a normally distributed response that fits better with lower mean squared error. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot).", echo=FALSE, message=FALSE, warning=FALSE, eval=TRUE, cache=TRUE}
 library(gridExtra)
 
 only_fsins <- assumedtargets[assumedtargets$Name=="fsins",]
@@ -541,7 +541,7 @@ expfam_ar1_rhs_dirs$modelcache <- "models/BLMM_gamma/ar1_rhs/no_holdout"
 expfam_ar1_rhs_dirs[expfam_ar1_rhs_dirs$Name=="fsins",]$modelcache <- "models/BLMM_normal/ar1_rhs/no_holdout"
 ```
 
-```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=FALSE, cache=FALSE}
+```{r expfam_ar1_rhs_ppc, echo=FALSE, fig.height = 4, fig.width=5, message=FALSE, warning=FALSE, eval=FALSE, cache=FALSE, fig.cap="Visual posterior predictive check of local distributions with normal distribution on fsins-response and Gamma AR(1) distribution on the others. Regularized horseshoe prior is used on common effect coefficients. This model is denoted as EXPFAM AR(1) in the rest of the analysis. The figure is plotted with bayesplot package for R language (v 1.7.3, https://mc-stan.org/bayesplot)."}
 source("mebn/MEBN.r")
 
 expfam_ar1_rhs_dirs2 <- assumedtargets
@@ -643,7 +643,7 @@ kable(nrmse.mat, "latex", booktabs = T, caption = "Model candidates were compare
 #  save_kable(file = "tables/NRMSE_comparison_table.pdf", keep_tex = TRUE)
 ```
 
-```{r nrmse_plot_vertical, fig.cap="Comparison of NRMSE metrics of different model versions. Normaized error is measured each local concentration distribution and for the whole network as mean of local distribution errors.", fig.height = 3, fig.width = 5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
+```{r nrmse_plot_vertical, fig.cap="Comparison of NRMSE metrics of different model versions. Normaized error is measured each local concentration distribution and for the whole network as mean of local distribution errors. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org).", fig.height = 3, fig.width = 5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=TRUE}
 library(ggplot2)
 
 nrmse.mat <- readRDS(file="evaluations/NRMSE-matrix3.rds")
@@ -822,7 +822,7 @@ class.df$Concentration <- gsub("fpgluk", "Glucose", class.df$Concentration)
 
 ```
 
-```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE, fig.cap="Different modeling methods were compared in a classification test where the direction of change for future concentration is predicted based on its past value and past diet. The proposed mixed-effect Bayesian network (MEBN) is compared with Extreme Gradient Boosting (XGBoost) decision tree method. The best-fitting EXPFAM AR(1) model version is used in this comparison with and without shrinkage prior (RHS). Cross-validated (CV) prediction accuracy is similar for both methods. The in-sample accuracy of MEBN is substantially higher, and these estimates are used in drawing conclusions at the clustering and personal models in this article."}
+```{r accuracy_plot, echo=FALSE, fig.align="left", fig.height=3, fig.width=5, message=FALSE, fig.cap="Different modeling methods were compared in a classification test where the direction of change for future concentration is predicted based on its past value and past diet. The proposed mixed-effect Bayesian network (MEBN) is compared with Extreme Gradient Boosting (XGBoost) decision tree method. The best-fitting EXPFAM AR(1) model version is used in this comparison with and without shrinkage prior (RHS). Cross-validated (CV) prediction accuracy is similar for both methods. The in-sample accuracy of MEBN is substantially higher, and these estimates are used in drawing conclusions at the clustering and personal models in this article. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 prediction_accuracy_plot <- ggplot() +
   geom_col(data = class.df, aes(x=Concentration, y=Accuracy, fill=Method), position = position_dodge(width = 0.9)) +
   scale_y_discrete(limits=seq(0,100,10), labels = paste0(seq(0,100,10), "%")) +
@@ -870,7 +870,7 @@ We have now reached a reasonably good fit for the local distributions of the Bay
 
 Besides the random variables, the graph also includes the regression coefficients $\beta$ and $b$ that denote the typical and personal magnitudes of the effects for different nutrients. For better overview, let us plot the graph of typical nutritional effects. 
 
-```{r, typical_effects_figure, fig.cap="This visualization shows mean of posterior for typical coefficients as weight of the connection between blood concentrations and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood concentrations.", fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
+```{r, typical_effects_figure, fig.cap="This visualization shows mean of posterior for typical coefficients as weight of the connection between blood concentrations and nutrients at diet affecting it. For clarity, the visualization only shows 15 principal components explaining the variance of each blood concentrations. The figure is plotted with iGraph package for R language (v 1.2.6, https://igraph.org/r).", fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", message=FALSE, warning=FALSE, cache=FALSE}
 source("mebn/MEBN.r")
 require(igraph)
 sysdimet_expfam_ar1 <- read_graph("graphs/sysdimet_expfam_ar1.graphml", "graphml")
@@ -966,7 +966,7 @@ ordered_typical_effects_rhs$nonrhs_variance <- ordered_typical_effects$variance
 
 We can examine closer the effects in the previous graph. In following, we show 90% credible interval for each effect and sort them by variance between persons. These effects with high variance between persons are interesting to us.
 
-```{r high_varying_effects,  fig.height = 5, fig.width = 6.5, fig.align="left", echo=FALSE, message=FALSE, warning=FALSE}
+```{r high_varying_effects, fig.height = 5, fig.width = 6.5, fig.cap="List of nutritional effects where the effect is either generally strong or it has high variation between subjects. The figure shows posterior means with credible intervals and compares the effect of shrinkage prior to vague prior. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org).", fig.align="left", echo=FALSE, message=FALSE, warning=FALSE}
 
 library(ggplot2)
 library(gridExtra)
@@ -1031,13 +1031,14 @@ p3 <- ggplot(ordered_typical_effects, aes(x=effect_text, y=variance)) +
   coord_flip()  
 
 p <- grid.arrange(p1, p2, p3, nrow = 1, widths=c(4,2,2), padding=0)
-ggsave("figures/high_varying_effects-1.pdf", plot = p, width = 6.5, height = 5)
+#ggsave("figures/high_varying_effects-1.pdf", plot = p, width = 6.5, height = 5)
+p
 
 ```
 
 These are the effect with most difference between subjects. Let us the examine closer those of the effects that have most probable variance over 0.30 and plot them as a graph
 
-```{r personal_variations_figure, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", cache = FALSE, fig.cap="Graph visualization of inter-subject variation in nutritional effects. The effect of energy intake has one of the largest inter-subject variances at insulin response."}
+```{r personal_variations_figure, fig.height = 4, fig.width=5, echo=FALSE, fig.align = "left", cache = FALSE, fig.cap="Graph visualization of inter-subject variation in nutritional effects. The effect of energy intake has one of the largest inter-subject variances at insulin response. The figure is plotted with iGraph package for R language (v 1.2.6, https://igraph.org/r)."}
 source("mebn/MEBN.r")
 effects_with_most_variance <- ordered_typical_effects[ordered_typical_effects$variance >= 0.30,]
 effects_with_most_variance$effect <- effects_with_most_variance$effect
@@ -1047,7 +1048,7 @@ mebn.plot_personal_variations(sysdimet_expfam_ar1, number_of_varying_effects)
 ```
 # Sensitivity analysis
 
-In Table 3, we provide a sensitivity analysis on how the graph estimates with either vague or shrinkage priors on beta parameters. It can be seen that standard deviations of personal effects are not sensitive to prior choice. In the actual personal effects, the shrinkage prior puts more weight on personal variations and less weight on general part of the effect.
+In Table S4, we provide a sensitivity analysis on how the graph estimates with either vague or shrinkage priors on beta parameters. It can be seen that standard deviations of personal effects are not sensitive to prior choice. In the actual personal effects, the shrinkage prior puts more weight on personal variations and less weight on general part of the effect.
 
 ```{r kmeans_dfs, echo=FALSE, cache=FALSE, message=FALSE}
 library(rstan)
@@ -1272,7 +1273,7 @@ RHS_table.df <- effects_table.df[c(1,2,4,7,8)]
   
 ```
 
-In addition, the effect parameters with most personal variation are provided in Table 4.
+In addition, the effect parameters with most personal variation are provided in Table S5
 
 ```{r table3, echo=FALSE, message=FALSE, eval=TRUE}
 # Table 3 in the article
@@ -1293,7 +1294,7 @@ Although there are personal differences, it is likely that everyone is not behav
 
 We can now take the personal estimations of the effects and see, if they form clusters
 
-```{r, echo=FALSE, eval=TRUE, fig.height=3, fig.width=5, fig.align = "left", fig.cap="The elbow plot of k-means clustering shows that difference between clusters decreases when more than four clusters are considered. These clusters include all the predictors, nutrients and the cholesterol lowering medication."}
+```{r, echo=FALSE, eval=TRUE, fig.height=3, fig.width=5, fig.align = "left", fig.cap="The elbow plot of k-means clustering shows that difference between clusters decreases when more than four clusters are considered. These clusters include all the predictors, nutrients and the cholesterol lowering medication. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 library(stats)
 library(gridExtra)
 
@@ -1330,7 +1331,7 @@ At this plot, zero of X-axis denotes a typical behavior of that particular react
 
 Cholesterol medication seems to dominate the clusters. There are subjects for who cholesterol medication raises the blood insulin levels more than on average and for other group the raise is less than on average.
 
-```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four most clearly separating clusters of personal reactions when all the predictors are considered, including cholesterol medication. The clustering is done for posterior means of personal effects. The effect of cholesterol-lowering medication to the insulin concentration dominates the personally varying effects. Besides decreasing the cholesterol concentration, the medication has a side effect of increasing insulin concentration for most of the subjects. Yet, there exists a large variation. The increasing effect is dramatic for 6,6\\% of the subjects in cluster 4, but for 10,4\\% of subjects in cluster 2 the effect is non-existing."}
+```{r personal_effect_clusters_all, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four most clearly separating clusters of personal reactions when all the predictors are considered, including cholesterol medication. The clustering is done for posterior means of personal effects. The effect of cholesterol-lowering medication to the insulin concentration dominates the personally varying effects. Besides decreasing the cholesterol concentration, the medication has a side effect of increasing insulin concentration for most of the subjects. Yet, there exists a large variation. The increasing effect is dramatic for 6,6\\% of the subjects in cluster 4, but for 10,4\\% of subjects in cluster 2 the effect is non-existing. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 source("mebn/MEBN.r")
 
 # Number of cluster centers 
@@ -1442,7 +1443,7 @@ for (i in c(1:nrow(assumedtargets)))
 }
 ```
 
-```{r, echo=FALSE, eval=TRUE, cache=FALSE, fig.height=3, fig.cap="Four clusters separated also when only the nutrient predictors of concentrations were considered."}
+```{r, echo=FALSE, eval=TRUE, cache=FALSE, fig.height=3, fig.cap="Four clusters separated also when only the nutrient predictors of concentrations were considered. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 # Number of clusters with nutritional effects only
 
 library(stats)
@@ -1473,7 +1474,7 @@ plot2 <- ggplot(data=df_vars, aes(x=x, y=y, group=1)) +
 gridExtra::grid.arrange(plot1,plot2,nrow=1)
 ```
 
-```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four clusters separated also when only the effects of nutrients were considered, and the cholesterol medication was left out. The modeled Bayesian network includes 110 different effects of nutrition, but these figures only show the effects that have the largest variations between the subjects. The subjects at clusters 1 and 2 react with generally different insulin concentration sensitivity. One of the specific differences in how monounsaturated fatty acids (MUFA) contributes to insulin concentrations. The cluster 3 with a small number of subjects shows also different reactions to fatty acids and fibers."}
+```{r personal_effect_clusters_nutrients, echo=FALSE, eval=TRUE, fig.width=4, fig.height=5, cache=FALSE, fig.cap="Four clusters separated also when only the effects of nutrients were considered, and the cholesterol medication was left out. The modeled Bayesian network includes 110 different effects of nutrition, but these figures only show the effects that have the largest variations between the subjects. The subjects at clusters 1 and 2 react with generally different insulin concentration sensitivity. One of the specific differences in how monounsaturated fatty acids (MUFA) contributes to insulin concentrations. The cluster 3 with a small number of subjects shows also different reactions to fatty acids and fibers. The figure is plotted with ggplot2 package for R language (v 3.3.2, https://ggplot2.tidyverse.org)."}
 
 # Number of cluster centers 
 k <- 4
@@ -1563,7 +1564,7 @@ write.graph(personal_graph2, "graphs/personal_insample_graph_s104.graphml", "gra
 
 We can then compare the visualizations of the personal reaction graphs. The effect of cholesterol medication is most significant difference, but other differences exist as well.
 
-```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE, fig.cap="Two subjects were picked from differently reacting clusters and their personally predicted reaction graphs show differences from the general behaviour."}
+```{r personal_graphs_comparison, eval=TRUE, fig.height = 8, fig.width = 5, fig.align = "left", echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE, fig.cap="Two subjects were picked from differently reacting clusters and their personally predicted reaction graphs show differences from the general behaviour. The figure is plotted with iGraph package for R language (v 1.2.6, https://igraph.org/r)."}
 source("mebn/MEBN.r")
 require(igraph)
 personal_graph1 <- read.graph("graphs/personal_insample_graph_s01.graphml", "graphml")
